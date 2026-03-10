@@ -1,0 +1,38 @@
+en
+conf t
+hostname WIE-BB-2
+banner motd #DiagNet WAN Topology#
+service password-encryption
+no ip domain lookup
+
+username cisco secret cisco
+username cisco priv 15
+
+ip domain-name diagnet.dev
+ip ssh version 2
+crypto key gen rsa g m 1024
+
+line con 0
+login local
+logging sync
+exec-timeout 0
+
+line vty 0 924
+login local
+logging sync
+exec-timeout 0
+transport input ssh telnet
+
+# Interfaces
+
+
+
+# SNMP
+ip access-list standard ACL_SNMP_SERVER
+ permit 10.10.254.1
+ exit
+configure terminal
+
+snmp-server view VIEW_RW iso included
+snmp-server group GROUP_RW v3 priv read VIEW_RW write VIEW_RW access ACL_SNMP_SERVER
+snmp-server user bigtopo123 GROUP_RW v3 auth sha bigtopo123 priv aes 128 bigtopo123

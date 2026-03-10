@@ -1,6 +1,6 @@
 en
 conf t
-hostname OOE-BB-1
+hostname WIE-BB-1
 banner motd #DiagNet WAN Topology#
 service password-encryption
 no ip domain lookup
