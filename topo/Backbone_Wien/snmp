@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Prüfen, ob das Skript als Root (sudo) ausgeführt wird
+if [ "$EUID" -ne 0 ]; then
+  echo "❌ Fehler: Bitte führe dieses Skript als Root aus (sudo ./setup-snmp.sh)"
+  exit 1
+fi
+
+echo "Starte die Einrichtung der SNMP-Dienste..."
+
+# multiverse Repository aktivieren (wird für einige MIBs bei Ubuntu benötigt)
+echo "[1/4] Installiere SNMP-Basispakete und MIBs..."
+add-apt-repository multiverse -y > /dev/null 2>&1
+apt-get update -qq
+apt-get install snmp snmptrapd snmp-mibs-downloader -y -qq
+
+# MIBs aktiv herunterladen, um sicherzugehen, dass sie vorhanden sind
+download-mibs > /dev/null 2>&1
+
+# In der Standardkonfiguration sind MIBs oft aus rechtlichen Gründen deaktiviert.
+echo "[2/4] Aktiviere MIBs (für lesbare OID-Namen)..."
+# Der Regex greift bei 'mibs:' und 'mibs :'
+sed -i 's/^mibs.*/# &/' /etc/snmp/snmp.conf
+
+# Erstellt eine Konfiguration, die Traps aufzeichnet
+echo "[3/4] Konfiguriere snmptrapd..."
+cat << 'EOF' > /etc/snmp/snmptrapd.conf
+# Erlaube Traps mit der Community 'public' ins Syslog zu schreiben
+authCommunity log,execute,net public
+
+disableAuthorization yes
+EOF
+
+# Dienste neustarten und aktivieren
+systemctl restart snmptrapd
+systemctl enable snmptrapd
+
+echo "[4/4] Konfiguriere Firewall (UFW) für Port 162 (SNMP Traps UDP)..."
+ufw allow 162/udp comment 'SNMP Traps'
+
+echo "======================================================"
+echo "✅ SNMP-Basiseinrichtung abgeschlossen!"
+echo "Der Server kann nun SNMP Traps (Port 162) empfangen."
+echo "Du kannst nun aktiv Geräte mit snmpget, snmpwalk und snmpset abfragen."
+echo "======================================================"

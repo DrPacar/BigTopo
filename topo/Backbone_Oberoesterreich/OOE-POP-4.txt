@@ -1,0 +1,26 @@
+en
+conf t
+hostname OOE-POP-4
+banner motd #DiagNet WAN Topology#
+service password-encryption
+no ip domain lookup
+
+username cisco secret cisco
+username cisco priv 15
+
+ip domain-name diagnet.dev
+ip ssh version 2
+crypto key gen rsa g m 1024
+
+line con 0
+login local
+logging sync
+exec-timeout 0
+
+line vty 0 924
+login local
+logging sync
+exec-timeout 0
+transport input ssh telnet
+
+# Interfaces
