@@ -24,10 +24,38 @@ exec-timeout 0
 transport input ssh telnet
 
 # Interfaces
+int Loopback0
+ip address 10.6.0.3 255.255.255.255
+ip router isis
+no shut
+
 int gig0/3
 ip address 10.6.4.1 255.255.255.0
+ip router isis
+mpls ip
 no shut
 
 int gig0/2
 ip address 10.6.1.3 255.255.255.0
+ip router isis
+mpls ip
 no shut
+
+# IS-IS Configuration
+router isis
+ net 49.0002.0000.0000.0003.00
+ is-type level-1-2
+ metric-style wide
+ redistribute isis ip level-2 into level-1 route-map LEAK-L2-TO-L1
+ log-adjacency-changes
+
+route-map LEAK-L2-TO-L1 permit 10
+match ip address any
+
+ip access-list standard any
+ permit any
+
+
+# MPLS Configuration
+mpls label protocol ldp
+mpls ldp router-id Loopback0 force
