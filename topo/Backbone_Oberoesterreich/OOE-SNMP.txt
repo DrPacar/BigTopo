@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# AP 3.3 - SNMP-Server fuer Backbone Oberösterreich (OOE)
+# Ubuntu/Linux Server | IP: 10.6.254.1/24 | Gateway: 10.6.254.253 (OOE-BB-2)
+# SNMPv3 | User: bigtopo123 | Auth: SHA | Priv: AES-128
+# Lesender UND schreibender Zugriff auf alle OOE-Netzwerkkomponenten
+
+if [ "$EUID" -ne 0 ]; then
+  echo "Fehler: Bitte als Root ausfuehren (sudo ./OOE-SNMP.txt)"
+  exit 1
+fi
+
+echo "Starte SNMP-Server Einrichtung fuer Backbone Oberoesterreich..."
+
+# --- Netzwerkkonfiguration ---
+echo "[1/6] Konfiguriere Netzwerkinterface (10.6.254.1/24)..."
+ip addr add 10.6.254.1/24 dev eth0 2>/dev/null || true
+ip link set eth0 up
+ip route add default via 10.6.254.253 2>/dev/null || true
+
+# --- Pakete installieren ---
+echo "[2/6] Installiere SNMP-Pakete..."
+add-apt-repository multiverse -y > /dev/null 2>&1
+apt-get update -qq
+apt-get install snmp snmpd snmptrapd snmp-mibs-downloader -y -qq
+download-mibs > /dev/null 2>&1
+
+# MIBs aktivieren
+sed -i 's/^mibs.*/# &/' /etc/snmp/snmp.conf 2>/dev/null || true
+echo "mibs +ALL" >> /etc/snmp/snmp.conf
+
+# --- snmpd konfigurieren (lokaler SNMP-Agent auf dem Server selbst) ---
+echo "[3/6] Konfiguriere snmpd (lokaler Agent)..."
+cat << 'EOF' > /etc/snmp/snmpd.conf
+# SNMPv3 Read-Write User fuer OOE Management
+createUser bigtopo123 SHA bigtopo123 AES bigtopo123
+rwuser bigtopo123 priv
+
+# Nur Loopback + Management-Interface horchen
+agentAddress udp:161,udp6:[::1]:161
+
+# System-Infos
+sysLocation OOE-Backbone Oberoesterreich
+sysContact DiagNet NOC <noc@diagnet.dev>
+EOF
+
+# --- snmptrapd konfigurieren (Trap-Empfang von OOE-Geraeten) ---
+echo "[4/6] Konfiguriere snmptrapd (Trap-Empfaenger)..."
+cat << 'EOF' > /etc/snmp/snmptrapd.conf
+# SNMPv3 Traps von OOE-Geraeten empfangen
+authUser log,execute,net bigtopo123 priv
+
+# Legacy Traps erlauben
+authCommunity log,execute,net public
+disableAuthorization yes
+
+# Trap-Log
+logOption f /var/log/snmp/ooe-traps.log
+EOF
+
+mkdir -p /var/log/snmp
+
+# --- SNMPv3 Client-Konfiguration (fuer snmpwalk/snmpget/snmpset) ---
+echo "[5/6] Konfiguriere SNMPv3 Client-Profil..."
+mkdir -p /root/.snmp
+cat << 'EOF' > /root/.snmp/snmp.conf
+# SNMPv3 Standardkonfiguration fuer OOE-Abfragen
+defVersion 3
+defSecurityName bigtopo123
+defSecurityLevel authPriv
+defAuthType SHA
+defPrivType AES
+defAuthPassphrase bigtopo123
+defPrivPassphrase bigtopo123
+EOF
+
+# --- Firewall konfigurieren ---
+echo "[6/6] Konfiguriere Firewall (UFW)..."
+ufw allow 161/udp comment 'SNMP Queries'
+ufw allow 162/udp comment 'SNMP Traps'
+
+# --- Dienste starten ---
+systemctl restart snmpd
+systemctl enable snmpd
+systemctl restart snmptrapd
+systemctl enable snmptrapd
+
+echo "======================================================"
+echo "SNMP-Server fuer OOE erfolgreich eingerichtet!"
+echo ""
+echo "Server-IP:   10.6.254.1"
+echo "SNMPv3-User: bigtopo123 (Auth: SHA | Priv: AES-128)"
+echo ""
+echo "Beispiel-Abfragen:"
+echo "  Lesen:    snmpwalk -v3 -u bigtopo123 -l authPriv -a SHA -A bigtopo123 -x AES -X bigtopo123 <GERAET-IP>"
+echo "  Schreiben: snmpset -v3 -u bigtopo123 -l authPriv -a SHA -A bigtopo123 -x AES -X bigtopo123 <GERAET-IP> <OID> <TYP> <WERT>"
+echo ""
+echo "OOE-Geraete:"
+echo "  OOE-BB-1: 10.6.0.1  OOE-BB-2: 10.6.0.2  OOE-BB-3: 10.6.0.3"
+echo "  OOE-POP-1: 10.6.0.11 OOE-POP-2: 10.6.0.12 OOE-POP-3: 10.6.0.13 OOE-POP-4: 10.6.0.14"
+echo "======================================================"

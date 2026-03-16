@@ -52,3 +52,12 @@ router isis
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
 
+# SNMP Konfiguration (AP 3.3)
+# POP-Router: Read-Only Zugriff | SNMPv3 | Server: 10.6.254.1
+ip access-list standard ACL_SNMP_SERVER
+ permit 10.6.254.1
+
+snmp-server view VIEW_RO iso included
+snmp-server group GROUP_RO v3 priv read VIEW_RO access ACL_SNMP_SERVER
+snmp-server user bigtopo123 GROUP_RO v3 auth sha bigtopo123 priv aes 128 bigtopo123
+

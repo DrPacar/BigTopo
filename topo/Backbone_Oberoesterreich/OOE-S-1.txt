@@ -1,0 +1,58 @@
+en
+conf t
+hostname OOE-S-1
+banner motd #DiagNet WAN Topology#
+service password-encryption
+no ip domain lookup
+
+username cisco secret cisco
+username cisco priv 15
+
+ip domain-name diagnet.dev
+ip ssh version 2
+crypto key gen rsa g m 1024
+
+line con 0
+login local
+logging sync
+exec-timeout 0
+
+line vty 0 924
+login local
+logging sync
+exec-timeout 0
+transport input ssh telnet
+
+# Management VLAN Interface (AP 3.3)
+# Verbindet OOE-SNMP (10.6.254.1) und OOE-MONITOR mit dem Backbone
+# Gateway: OOE-BB-2 gig0/1 (10.6.254.253)
+int vlan 1
+ ip address 10.6.254.254 255.255.255.0
+ no shut
+
+ip default-gateway 10.6.254.253
+
+# Switchports
+int fa0/1
+ description TO_OOE-SNMP
+ switchport mode access
+ no shut
+
+int fa0/2
+ description TO_OOE-MONITOR
+ switchport mode access
+ no shut
+
+int fa0/24
+ description UPLINK_TO_OOE-BB-2
+ switchport mode access
+ no shut
+
+# SNMP Konfiguration (AP 3.3)
+# Switch: Read-Only Zugriff | SNMPv3 | Server: 10.6.254.1
+ip access-list standard ACL_SNMP_SERVER
+ permit 10.6.254.1
+
+snmp-server view VIEW_RO iso included
+snmp-server group GROUP_RO v3 priv read VIEW_RO access ACL_SNMP_SERVER
+snmp-server user bigtopo123 GROUP_RO v3 auth sha bigtopo123 priv aes 128 bigtopo123

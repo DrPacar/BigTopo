@@ -51,3 +51,44 @@ router isis
 # MPLS Configuration
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
+
+# Management Interface fuer SNMP-Server (AP 3.3)
+# OOE-S-1 haengt an diesem Interface (10.6.254.0/24)
+int gig0/1
+ ip address 10.6.254.253 255.255.255.0
+ description TO_OOE-S-1_MGMT
+ ip router isis
+ no shut
+
+# BGP Konfiguration (AP 3.2)
+# Confederation Main-AS 65006 | Sub-AS 65061 (IS-IS Area 49.0001)
+# iBGP zu OOE-BB-1 via Loopback
+# Confederation eBGP zu OOE-BB-3 (Sub-AS 65062) via 10.6.4.1
+router bgp 65061
+ bgp confederation identifier 65006
+ bgp confederation peers 65062
+ bgp router-id 10.6.0.2
+ bgp log-neighbor-changes
+ !
+ neighbor 10.6.0.1 remote-as 65061
+ neighbor 10.6.0.1 update-source Loopback0
+ neighbor 10.6.0.1 next-hop-self
+ neighbor 10.6.0.1 description OOE-BB-1_iBGP
+ !
+ neighbor 10.6.4.1 remote-as 65062
+ neighbor 10.6.4.1 description OOE-BB-3_confed-eBGP
+ !
+ address-family ipv4
+  network 10.6.0.0 mask 255.255.0.0
+  neighbor 10.6.0.1 activate
+  neighbor 10.6.4.1 activate
+ exit-address-family
+
+# SNMP Konfiguration (AP 3.3)
+# BB-Router: Read-Write Zugriff | SNMPv3 | Server: 10.6.254.1
+ip access-list standard ACL_SNMP_SERVER
+ permit 10.6.254.1
+
+snmp-server view VIEW_RW iso included
+snmp-server group GROUP_RW v3 priv read VIEW_RW write VIEW_RW access ACL_SNMP_SERVER
+snmp-server user bigtopo123 GROUP_RW v3 auth sha bigtopo123 priv aes 128 bigtopo123
