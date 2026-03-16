@@ -24,10 +24,13 @@ exec-timeout 0
 transport input ssh telnet
 
 # Interfaces
-int gig0/1
-ip address 10.10.5.1 255.255.255.0
-no shut
+int lo0
+ ip address 10.10.255.13 255.255.255.255
+ no shut
 
+int gig0/1
+ ip address 10.10.5.1 255.255.255.0
+ no shut
 
 # SNMP
 ip access-list standard ACL_SNMP_SERVER
@@ -36,3 +39,103 @@ ip access-list standard ACL_SNMP_SERVER
 snmp-server view VIEW_RO iso included
 snmp-server group GROUP_RO v3 priv read VIEW_RO access ACL_SNMP_SERVER
 snmp-server user bigtopo123 GROUP_RO v3 auth sha bigtopo123 priv aes 128 bigtopo123
+
+# AP 2.1 - OSPFv3 Underlay (authenticated, BFD)
+key chain WIE_OSPF_KC
+ key 1
+  key-string diagnet123
+  cryptographic-algorithm hmac-sha-256
+
+router ospfv3 1
+ router-id 10.10.255.13
+ bfd all-interfaces
+ address-family ipv4 unicast
+  area 0 authentication key-chain WIE_OSPF_KC
+
+int lo0
+ ospfv3 1 ipv4 area 0
+ ospfv3 1 ipv4 network point-to-point
+
+int gig0/1
+ bfd interval 50 min_rx 50 multiplier 3
+ ospfv3 1 ipv4 area 0
+ ospfv3 1 ipv4 network point-to-point
+
+# AP 2.1 - IPsec fuer DMVPN
+crypto isakmp policy 10
+ encryption aes 256
+ hash sha256
+ authentication pre-share
+ group 14
+ lifetime 3600
+crypto isakmp key dmvpn123 address 0.0.0.0
+
+crypto ipsec transform-set DMVPN_TSET esp-aes 256 esp-sha256-hmac
+ mode transport
+
+crypto ipsec profile DMVPN_PROFILE
+ set transform-set DMVPN_TSET
+
+# AP 2.1 - DMVPN Spoke Cloud 1 (Hub: WIE-BB-1)
+int tunnel 1
+ description DMVPN-Spoke-Cloud1
+ ip address 10.10.100.13 255.255.255.0
+ no shut
+ tunnel source lo0
+ tunnel mode gre multipoint
+ tunnel key 1
+ tunnel protection ipsec profile DMVPN_PROFILE
+ ip nhrp network-id 1
+ ip nhrp authentication dmvpn123
+ ip nhrp nhs 10.10.100.1 nbma 10.10.255.1 multicast
+ ip nhrp map multicast 10.10.255.1
+
+# AP 2.1 - DMVPN Spoke Cloud 2 (Hub: WIE-BB-2)
+int tunnel 2
+ description DMVPN-Spoke-Cloud2
+ ip address 10.10.101.13 255.255.255.0
+ no shut
+ tunnel source lo0
+ tunnel mode gre multipoint
+ tunnel key 2
+ tunnel protection ipsec profile DMVPN_PROFILE
+ ip nhrp network-id 2
+ ip nhrp authentication dmvpn123
+ ip nhrp nhs 10.10.101.1 nbma 10.10.255.2 multicast
+ ip nhrp map multicast 10.10.255.2
+
+# AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN, Spoke = stub)
+router eigrp DMVPN_OVERLAY
+ address-family ipv4 unicast autonomous-system 100
+  eigrp stub connected
+  distance eigrp 115 115
+  network 10.10.100.0 0.0.0.255
+  network 10.10.101.0 0.0.0.255
+  network 10.10.255.0 0.0.0.255
+
+# AP 2.2 - BGP Route Reflector 2
+router bgp 65001
+ bgp router-id 10.10.255.13
+ bgp log-neighbor-changes
+ ! RR-Clients
+ neighbor RR-CLIENTS peer-group
+ neighbor RR-CLIENTS remote-as 65001
+ neighbor RR-CLIENTS update-source lo0
+ neighbor RR-CLIENTS route-reflector-client
+ neighbor 10.10.255.1 peer-group RR-CLIENTS
+ neighbor 10.10.255.1 description RR-CLIENT-WIE-BB-1
+ neighbor 10.10.255.2 peer-group RR-CLIENTS
+ neighbor 10.10.255.2 description RR-CLIENT-WIE-BB-2
+ neighbor 10.10.255.12 peer-group RR-CLIENTS
+ neighbor 10.10.255.12 description RR-CLIENT-WIE-POP-2
+ neighbor 10.10.255.14 peer-group RR-CLIENTS
+ neighbor 10.10.255.14 description RR-CLIENT-WIE-POP-4
+ ! Non-Client Peer (anderer RR)
+ neighbor 10.10.255.11 remote-as 65001
+ neighbor 10.10.255.11 description iBGP-RR1-WIE-POP-1
+ neighbor 10.10.255.11 update-source lo0
+ ! eBGP laut Dokument "Informationen" - TODO
+ !
+ address-family ipv4
+  neighbor RR-CLIENTS activate
+  neighbor 10.10.255.11 activate
