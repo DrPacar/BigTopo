@@ -24,7 +24,9 @@ exec-timeout 0
 transport input ssh telnet
 
 # Interfaces
-
+int gig0/0
+ip address 10.10.4.1 255.255.255.0
+no shut
 
 
 # SNMP

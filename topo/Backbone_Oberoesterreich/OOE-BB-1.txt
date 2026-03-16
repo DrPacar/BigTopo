@@ -24,3 +24,14 @@ exec-timeout 0
 transport input ssh telnet
 
 # Interfaces
+int gig0/0
+ip address 10.6.5.2 255.255.255.0
+no shut
+
+int gig0/1
+ip address 10.6.6.1 255.255.255.0
+no shut
+
+int gig0/3
+ip address 10.6.3.2 255.255.255.0
+no shut
