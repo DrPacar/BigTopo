@@ -117,15 +117,11 @@ router eigrp DMVPN_OVERLAY
 router bgp 65001
  bgp router-id 10.10.255.13
  bgp log-neighbor-changes
- ! RR-Clients
+ ! RR-Clients: nur POPs (BB-Router sind P-Router ohne BGP)
  neighbor RR-CLIENTS peer-group
  neighbor RR-CLIENTS remote-as 65001
  neighbor RR-CLIENTS update-source lo0
  neighbor RR-CLIENTS route-reflector-client
- neighbor 10.10.255.1 peer-group RR-CLIENTS
- neighbor 10.10.255.1 description RR-CLIENT-WIE-BB-1
- neighbor 10.10.255.2 peer-group RR-CLIENTS
- neighbor 10.10.255.2 description RR-CLIENT-WIE-BB-2
  neighbor 10.10.255.12 peer-group RR-CLIENTS
  neighbor 10.10.255.12 description RR-CLIENT-WIE-POP-2
  neighbor 10.10.255.14 peer-group RR-CLIENTS
@@ -137,5 +133,6 @@ router bgp 65001
  ! eBGP laut Dokument "Informationen" - TODO
  !
  address-family ipv4
+  network 10.10.0.0 mask 255.255.0.0
   neighbor RR-CLIENTS activate
   neighbor 10.10.255.11 activate

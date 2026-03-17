@@ -129,31 +129,5 @@ router eigrp DMVPN_OVERLAY
   network 10.10.100.0 0.0.0.255
   network 10.10.255.0 0.0.0.255
 
-# AP 2.2 - BGP iBGP RR-Client
-# eBGP-Konfiguration gemaess Dokument "Informationen" - TODO
-ip prefix-list PL_172_16_4 seq 5 permit 172.16.4.0/24
-
-route-map RM_MED_STM permit 10
- match ip address prefix-list PL_172_16_4
- set metric 500
-route-map RM_MED_STM permit 20
-
-router bgp 65001
- bgp router-id 10.10.255.1
- bgp log-neighbor-changes
- ! iBGP zu Route Reflectoren
- neighbor 10.10.255.11 remote-as 65001
- neighbor 10.10.255.11 description iBGP-RR1-WIE-POP-1
- neighbor 10.10.255.11 update-source lo0
- neighbor 10.10.255.13 remote-as 65001
- neighbor 10.10.255.13 description iBGP-RR2-WIE-POP-3
- neighbor 10.10.255.13 update-source lo0
- ! eBGP zu STM-POP-1 - IP laut Dokument "Informationen" eintragen
- ! neighbor <STM-POP-1-IP> remote-as <STM-AS>
- ! neighbor <STM-POP-1-IP> description eBGP-STM-POP-1
- !
- address-family ipv4
-  neighbor 10.10.255.11 activate
-  neighbor 10.10.255.13 activate
-  ! neighbor <STM-POP-1-IP> activate
-  ! neighbor <STM-POP-1-IP> route-map RM_MED_STM out
+# AP 2.2 - WIE-BB-1 ist reiner OSPFv3/DMVPN Core-Router (P-Router)
+# BGP nicht benoetigt - Loopback-Erreichbarkeit via OSPFv3 + EIGRP im DMVPN

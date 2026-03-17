@@ -25,12 +25,12 @@ transport input ssh telnet
 
 # Management VLAN Interface (AP 3.3)
 # Verbindet OOE-SNMP (10.6.254.1) und OOE-MONITOR mit dem Backbone
-# Gateway: OOE-BB-2 gig0/1 (10.6.254.253)
+# Gateway: OOE-BB-3 gig0/1 (10.6.254.252)
 int vlan 1
  ip address 10.6.254.254 255.255.255.0
  no shut
 
-ip default-gateway 10.6.254.253
+ip default-gateway 10.6.254.252
 
 # Switchports
 int fa0/1

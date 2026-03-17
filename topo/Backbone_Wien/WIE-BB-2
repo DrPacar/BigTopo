@@ -129,20 +129,5 @@ router eigrp DMVPN_OVERLAY
   network 10.10.101.0 0.0.0.255
   network 10.10.255.0 0.0.0.255
 
-# AP 2.2 - BGP iBGP RR-Client
-# eBGP-Konfiguration gemaess Dokument "Informationen" - TODO
-router bgp 65001
- bgp router-id 10.10.255.2
- bgp log-neighbor-changes
- ! iBGP zu Route Reflectoren
- neighbor 10.10.255.11 remote-as 65001
- neighbor 10.10.255.11 description iBGP-RR1-WIE-POP-1
- neighbor 10.10.255.11 update-source lo0
- neighbor 10.10.255.13 remote-as 65001
- neighbor 10.10.255.13 description iBGP-RR2-WIE-POP-3
- neighbor 10.10.255.13 update-source lo0
- ! eBGP laut Dokument "Informationen" - TODO
- !
- address-family ipv4
-  neighbor 10.10.255.11 activate
-  neighbor 10.10.255.13 activate
+# AP 2.2 - WIE-BB-2 ist reiner OSPFv3/DMVPN Core-Router (P-Router)
+# BGP nicht benoetigt - Loopback-Erreichbarkeit via OSPFv3 + EIGRP im DMVPN

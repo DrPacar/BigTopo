@@ -46,6 +46,38 @@ router isis
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
 
+# Externes Interface zu STN (AP 3.2)
+int gig0/1
+ ip address 172.16.8.2 255.255.255.0
+ description TO_STN-POP-5_eBGP
+ no shut
+
+# BGP Pfadsteuerung: LOCAL_PREF 200 fuer ROK-Prefix von STN (AP 3.2)
+ip prefix-list PREF_ROK seq 5 permit 10.0.0.0/16
+
+route-map RM_FROM_STN permit 10
+ match ip address prefix-list PREF_ROK
+ set local-preference 200
+
+route-map RM_FROM_STN permit 20
+
+# BGP Konfiguration (AP 3.2)
+# Confederation Main-AS 65006 | Sub-AS 65062 (IS-IS Area 49.0002)
+# Nur eBGP zu STN-POP-5 (AS 65007) - kein iBGP
+router bgp 65062
+ bgp confederation identifier 65006
+ bgp router-id 10.6.0.14
+ bgp log-neighbor-changes
+ !
+ neighbor 172.16.8.1 remote-as 65007
+ neighbor 172.16.8.1 description STN-POP-5_eBGP
+ neighbor 172.16.8.1 route-map RM_FROM_STN in
+ !
+ address-family ipv4
+  network 10.6.0.0 mask 255.255.0.0
+  neighbor 172.16.8.1 activate
+ exit-address-family
+
 # SNMP Konfiguration (AP 3.3)
 # POP-Router: Read-Only Zugriff | SNMPv3 | Server: 10.6.254.1
 ip access-list standard ACL_SNMP_SERVER

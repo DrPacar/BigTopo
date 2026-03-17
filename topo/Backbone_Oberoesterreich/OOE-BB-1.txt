@@ -66,35 +66,15 @@ ip access-list standard any
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
 
-# Externes Interface zu NOE (AP 3.2)
+# Interface zu OOE-MONITOR (AP 3.3)
 int gig0/2
- ip address 172.16.13.1 255.255.255.0
- description TO_NOE-POP-2
+ ip address 10.6.254.253 255.255.255.0
+ description TO_OOE-MONITOR_MGMT
+ ip router isis
  no shut
 
-# BGP Konfiguration (AP 3.2)
-# Confederation Main-AS 65006 | Sub-AS 65061 (IS-IS Area 49.0001)
-# iBGP zu OOE-BB-2 via Loopback
-# eBGP zu NOE-POP-2 (AS 65005) via 172.16.13.254
-router bgp 65061
- bgp confederation identifier 65006
- bgp confederation peers 65062
- bgp router-id 10.6.0.1
- bgp log-neighbor-changes
- !
- neighbor 10.6.0.2 remote-as 65061
- neighbor 10.6.0.2 update-source Loopback0
- neighbor 10.6.0.2 next-hop-self
- neighbor 10.6.0.2 description OOE-BB-2_iBGP
- !
- neighbor 172.16.13.254 remote-as 65005
- neighbor 172.16.13.254 description NOE-POP-2_eBGP
- !
- address-family ipv4
-  network 10.6.0.0 mask 255.255.0.0
-  neighbor 10.6.0.2 activate
-  neighbor 172.16.13.254 activate
- exit-address-family
+# AP 3.2 - OOE-BB-1 ist reiner IS-IS/MPLS Core-Router (P-Router)
+# BGP nicht benoetigt - Loopback-Erreichbarkeit via IS-IS
 
 # SNMP Konfiguration (AP 3.3)
 # BB-Router: Read-Write Zugriff | SNMPv3 | Server: 10.6.254.1
