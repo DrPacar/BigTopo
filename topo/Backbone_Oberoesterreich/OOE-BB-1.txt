@@ -41,19 +41,21 @@ ip router isis
 mpls ip
 no shut
 
-int gig0/3
+int gig0/2
 ip address 10.6.3.2 255.255.255.0
 ip router isis
+isis network point-to-point
+isis circuit-type level-1
 mpls ip
 no shut
 
 # IS-IS Configuration
 router isis
- net 49.0001.0000.0000.0001.00
- is-type level-1-2
- metric-style wide
- redistribute isis ip level-2 into level-1 route-map LEAK-L2-TO-L1
- log-adjacency-changes
+net 49.0001.0000.0000.0001.00
+is-type level-1-2
+metric-style wide
+redistribute isis ip level-2 into level-1 route-map LEAK-L2-TO-L1
+log-adjacency-changes
 
 route-map LEAK-L2-TO-L1 permit 10
 match ip address any
@@ -65,16 +67,6 @@ ip access-list standard any
 # MPLS Configuration
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
-
-# Interface zu OOE-MONITOR (AP 3.3)
-int gig0/2
- ip address 10.6.254.253 255.255.255.0
- description TO_OOE-MONITOR_MGMT
- ip router isis
- no shut
-
-# AP 3.2 - OOE-BB-1 ist reiner IS-IS/MPLS Core-Router (P-Router)
-# BGP nicht benoetigt - Loopback-Erreichbarkeit via IS-IS
 
 # SNMP Konfiguration (AP 3.3)
 # BB-Router: Read-Write Zugriff | SNMPv3 | Server: 10.6.254.1

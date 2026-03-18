@@ -31,57 +31,72 @@ no shut
 
 int gig0/0
 ip address 10.6.2.2 255.255.255.0
-ip router isis
 mpls ip
 no shut
 
 int gig0/2
 ip address 10.6.3.1 255.255.255.0
 ip router isis
+isis network point-to-point
+isis circuit-type level-1
 mpls ip
 no shut
 
 # IS-IS Configuration
 router isis
- net 49.0001.0000.0000.0012.00
- is-type level-1
- metric-style wide
- log-adjacency-changes
+net 49.0001.0000.0000.0012.00
+is-type level-1
+metric-style wide
+log-adjacency-changes
 
 # MPLS Configuration
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
 
-# Externes Interface zu STN (AP 3.2)
+# Externes Interface
 int gig0/1
  ip address 172.16.10.2 255.255.255.0
- description TO_STN-POP-3_eBGP
+ description TO_INTERNET_10
  no shut
 
-# BGP Pfadsteuerung: LOCAL_PREF 200 fuer ROK-Prefix von STN (AP 3.2)
-ip prefix-list PREF_ROK seq 5 permit 10.0.0.0/16
-
-route-map RM_FROM_STN permit 10
- match ip address prefix-list PREF_ROK
- set local-preference 200
-
-route-map RM_FROM_STN permit 20
-
-# BGP Konfiguration (AP 3.2)
-# Confederation Main-AS 65006 | Sub-AS 65061 (IS-IS Area 49.0001)
-# Nur eBGP zu STN-POP-3 (AS 65007) - kein iBGP
-router bgp 65061
- bgp confederation identifier 65006
+# BGP Konfiguration
+# Confederation Main-AS 6 | Sub-AS 61
+router bgp 61
+ bgp confederation identifier 6
+ bgp confederation peers 62
  bgp router-id 10.6.0.12
  bgp log-neighbor-changes
+ no synchronization
+ no auto-summary
  !
- neighbor 172.16.10.1 remote-as 65007
- neighbor 172.16.10.1 description STN-POP-3_eBGP
- neighbor 172.16.10.1 route-map RM_FROM_STN in
+ neighbor 10.6.0.11 remote-as 61
+ neighbor 10.6.0.11 update-source Loopback0
+ neighbor 10.6.0.11 description OOE-POP-1_iBGP
+ !
+ neighbor 10.6.0.13 remote-as 62
+ neighbor 10.6.0.13 update-source Loopback0
+ neighbor 10.6.0.13 ebgp-multihop 10
+ neighbor 10.6.0.13 description OOE-POP-3_Confed_eBGP
+ !
+ neighbor 10.6.0.14 remote-as 62
+ neighbor 10.6.0.14 update-source Loopback0
+ neighbor 10.6.0.14 ebgp-multihop 10
+ neighbor 10.6.0.14 description OOE-POP-4_Confed_eBGP
+ !
+ neighbor 172.16.10.1 remote-as 4
+ neighbor 172.16.10.1 update-source gig0/1
+ neighbor 172.16.10.1 password cisco
+ neighbor 172.16.10.1 description EXT_PEER_10
  !
  address-family ipv4
-  network 10.6.0.0 mask 255.255.0.0
+  neighbor 10.6.0.11 activate
+  neighbor 10.6.0.11 next-hop-self
+  neighbor 10.6.0.13 activate
+  neighbor 10.6.0.13 next-hop-self
+  neighbor 10.6.0.14 activate
+  neighbor 10.6.0.14 next-hop-self
   neighbor 172.16.10.1 activate
+  neighbor 172.16.10.1 next-hop-self
  exit-address-family
 
 # SNMP Konfiguration (AP 3.3)
