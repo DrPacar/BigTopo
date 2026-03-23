@@ -26,10 +26,17 @@ transport input ssh telnet
 # Interfaces
 int lo0
  ip address 10.10.255.11 255.255.255.255
+ ipv6 enable
+ no shut
+
+int lo1
+ ip address 10.10.255.21 255.255.255.255
+ ipv6 enable
  no shut
 
 int gig0/0
  ip address 10.10.1.1 255.255.255.0
+ ipv6 enable
  no shut
 
 # SNMP
@@ -40,7 +47,9 @@ snmp-server view VIEW_RO iso included
 snmp-server group GROUP_RO v3 priv read VIEW_RO access ACL_SNMP_SERVER
 snmp-server user bigtopo123 GROUP_RO v3 auth sha bigtopo123 priv aes 128 bigtopo123
 
-# AP 2.1 - OSPFv3 Underlay (authenticated, BFD)
+# AP 2.1 - OSPFv3 Underlay (authenticated)
+ipv6 unicast-routing
+
 key chain WIE_OSPF_KC
  key 1
   key-string diagnet123
@@ -48,7 +57,6 @@ key chain WIE_OSPF_KC
 
 router ospfv3 1
  router-id 10.10.255.11
- bfd all-interfaces
  address-family ipv4 unicast
   area 0 authentication key-chain WIE_OSPF_KC
 
@@ -56,21 +64,24 @@ int lo0
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
+int lo1
+ ospfv3 1 ipv4 area 0
+ ospfv3 1 ipv4 network point-to-point
+
 int gig0/0
- bfd interval 50 min_rx 50 multiplier 3
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
 # AP 2.1 - IPsec fuer DMVPN
 crypto isakmp policy 10
- encryption aes 256
- hash sha256
+ encryption aes
+ hash sha
  authentication pre-share
- group 14
- lifetime 3600
+ group 2
+ lifetime 86400
 crypto isakmp key dmvpn123 address 0.0.0.0
 
-crypto ipsec transform-set DMVPN_TSET esp-aes 256 esp-sha256-hmac
+crypto ipsec transform-set DMVPN_TSET esp-aes esp-sha-hmac
  mode transport
 
 crypto ipsec profile DMVPN_PROFILE
@@ -83,68 +94,47 @@ int tunnel 1
  no shut
  tunnel source lo0
  tunnel mode gre multipoint
- tunnel key 1
  tunnel protection ipsec profile DMVPN_PROFILE
  ip nhrp network-id 1
  ip nhrp authentication dmvpn123
  ip nhrp nhs 10.10.100.1 nbma 10.10.255.1 multicast
  ip nhrp map multicast 10.10.255.1
+ ip nhrp shortcut
 
 # AP 2.1 - DMVPN Spoke Cloud 2 (Hub: WIE-BB-2)
 int tunnel 2
  description DMVPN-Spoke-Cloud2
  ip address 10.10.101.11 255.255.255.0
  no shut
- tunnel source lo0
+ tunnel source lo1
  tunnel mode gre multipoint
- tunnel key 2
  tunnel protection ipsec profile DMVPN_PROFILE
  ip nhrp network-id 2
  ip nhrp authentication dmvpn123
  ip nhrp nhs 10.10.101.1 nbma 10.10.255.2 multicast
  ip nhrp map multicast 10.10.255.2
+ ip nhrp shortcut
 
-# AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN, Spoke = stub)
-router eigrp DMVPN_OVERLAY
- address-family ipv4 unicast autonomous-system 100
-  eigrp stub connected
-  distance eigrp 115 115
-  network 10.10.100.0 0.0.0.255
-  network 10.10.101.0 0.0.0.255
-  network 10.10.255.0 0.0.0.255
+# AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN)
+router eigrp 100
+ network 10.10.100.0 0.0.0.255
+ network 10.10.101.0 0.0.0.255
+ no auto-summary
 
 # AP 2.2 - BGP Route Reflector 1
-# MED=500 fuer 172.16.4.0/24 an STM-POP-1 (von BB-1 hierher verschoben)
-ip prefix-list PL_172_16_4 seq 5 permit 172.16.4.0/24
-
-route-map RM_MED_STM permit 10
- match ip address prefix-list PL_172_16_4
- set metric 500
-route-map RM_MED_STM permit 20
-
-router bgp 65001
+router bgp 3
  bgp router-id 10.10.255.11
  bgp log-neighbor-changes
- ! RR-Clients: nur POPs (BB-Router sind P-Router ohne BGP)
  neighbor RR-CLIENTS peer-group
- neighbor RR-CLIENTS remote-as 65001
+ neighbor RR-CLIENTS remote-as 3
  neighbor RR-CLIENTS update-source lo0
  neighbor RR-CLIENTS route-reflector-client
  neighbor 10.10.255.12 peer-group RR-CLIENTS
- neighbor 10.10.255.12 description RR-CLIENT-WIE-POP-2
  neighbor 10.10.255.14 peer-group RR-CLIENTS
- neighbor 10.10.255.14 description RR-CLIENT-WIE-POP-4
- ! Non-Client Peer (anderer RR)
- neighbor 10.10.255.13 remote-as 65001
- neighbor 10.10.255.13 description iBGP-RR2-WIE-POP-3
+ neighbor 10.10.255.13 remote-as 3
  neighbor 10.10.255.13 update-source lo0
- ! eBGP zu STM-POP-1 - IP laut Dokument "Informationen" eintragen
- ! neighbor <STM-POP-1-IP> remote-as <STM-AS>
- ! neighbor <STM-POP-1-IP> description eBGP-STM-POP-1
  !
  address-family ipv4
   network 10.10.0.0 mask 255.255.0.0
   neighbor RR-CLIENTS activate
   neighbor 10.10.255.13 activate
-  ! neighbor <STM-POP-1-IP> activate
-  ! neighbor <STM-POP-1-IP> route-map RM_MED_STM out

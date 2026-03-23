@@ -26,10 +26,22 @@ transport input ssh telnet
 # Interfaces
 int lo0
  ip address 10.10.255.14 255.255.255.255
+ ipv6 enable
  no shut
 
 int gig0/0
  ip address 10.10.4.1 255.255.255.0
+ ipv6 enable
+ no shut
+
+int gig0/1
+ ip address 172.16.3.1 255.255.255.0
+ ipv6 enable
+ no shut
+
+int gig0/2
+ ip address 10.9.0.1 255.255.0.0
+ ipv6 enable
  no shut
 
 # SNMP
@@ -40,7 +52,9 @@ snmp-server view VIEW_RO iso included
 snmp-server group GROUP_RO v3 priv read VIEW_RO access ACL_SNMP_SERVER
 snmp-server user bigtopo123 GROUP_RO v3 auth sha bigtopo123 priv aes 128 bigtopo123
 
-# AP 2.1 - OSPFv3 Underlay (authenticated, BFD)
+# AP 2.1 - OSPFv3 Underlay (authenticated)
+ipv6 unicast-routing
+
 key chain WIE_OSPF_KC
  key 1
   key-string diagnet123
@@ -48,7 +62,6 @@ key chain WIE_OSPF_KC
 
 router ospfv3 1
  router-id 10.10.255.14
- bfd all-interfaces
  address-family ipv4 unicast
   area 0 authentication key-chain WIE_OSPF_KC
 
@@ -57,21 +70,34 @@ int lo0
  ospfv3 1 ipv4 network point-to-point
 
 int gig0/0
- bfd interval 50 min_rx 50 multiplier 3
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
-# AP 2.2 - BGP iBGP RR-Client
-router bgp 65001
+# AP 2.2 - BGP RR-Client
+ip prefix-list PL_172_16_4 seq 5 permit 172.16.4.0/24
+
+route-map RM_MED_STM permit 10
+ match ip address prefix-list PL_172_16_4
+ set metric 500
+route-map RM_MED_STM permit 20
+
+router bgp 3
  bgp router-id 10.10.255.14
  bgp log-neighbor-changes
- neighbor 10.10.255.11 remote-as 65001
- neighbor 10.10.255.11 description iBGP-RR1-WIE-POP-1
+ neighbor 10.10.255.11 remote-as 3
  neighbor 10.10.255.11 update-source lo0
- neighbor 10.10.255.13 remote-as 65001
- neighbor 10.10.255.13 description iBGP-RR2-WIE-POP-3
+ neighbor 10.10.255.13 remote-as 3
  neighbor 10.10.255.13 update-source lo0
+ neighbor 172.16.3.2 remote-as 4
+ neighbor 172.16.3.2 password cisco
+ neighbor 172.16.3.2 next-hop-self
+ neighbor 10.9.0.2 remote-as 2
+ neighbor 10.9.0.2 password cisco
+ neighbor 10.9.0.2 next-hop-self
  !
  address-family ipv4
   neighbor 10.10.255.11 activate
   neighbor 10.10.255.13 activate
+  neighbor 172.16.3.2 activate
+  neighbor 172.16.3.2 route-map RM_MED_STM out
+  neighbor 10.9.0.2 activate
