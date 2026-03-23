@@ -52,6 +52,12 @@ snmp-server view VIEW_RO iso included
 snmp-server group GROUP_RO v3 priv read VIEW_RO access ACL_SNMP_SERVER
 snmp-server user bigtopo123 GROUP_RO v3 auth sha bigtopo123 priv aes 128 bigtopo123
 
+# AP 2.3 - Syslog Konfiguration
+service timestamps log datetime msec
+logging host 10.10.254.10
+logging trap informational
+logging source-interface Loopback0
+
 # AP 2.1 - OSPFv3 Underlay (authenticated)
 ipv6 unicast-routing
 

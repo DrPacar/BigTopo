@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AP 3.3 - SNMP-Server fuer Backbone Oberösterreich (OOE)
-# Ubuntu/Linux Server | IP: 10.6.254.1/24 | Gateway: 10.6.254.253 (OOE-BB-2)
+# Ubuntu/Linux Server | IP: 10.6.254.1/24 | Gateway: 10.6.254.253 (OOE-BB-1)
 # SNMPv3 | User: bigtopo123 | Auth: SHA | Priv: AES-128
 # Lesender UND schreibender Zugriff auf alle OOE-Netzwerkkomponenten
 

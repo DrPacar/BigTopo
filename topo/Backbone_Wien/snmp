@@ -1,45 +1,132 @@
 #!/bin/bash
 
-# Prüfen, ob das Skript als Root (sudo) ausgeführt wird
+# AP 2.3 - SNMP-Server fuer Backbone Wien
+# Ubuntu/Linux Server | IP: 10.10.254.1/24 | Gateway: 10.10.254.254 (WIE-POP-1)
+# SNMPv3 | User: bigtopo123 | Auth: SHA | Priv: AES-128
+# Lesender Zugriff auf POP-Geraete | Schreibender Zugriff auf BB-Geraete
+
 if [ "$EUID" -ne 0 ]; then
-  echo "❌ Fehler: Bitte führe dieses Skript als Root aus (sudo ./setup-snmp.sh)"
+  echo "Fehler: Bitte als Root ausfuehren (sudo ./snmp)"
   exit 1
 fi
 
-echo "Starte die Einrichtung der SNMP-Dienste..."
+echo "Starte SNMP-Server Einrichtung fuer Backbone Wien..."
 
-# multiverse Repository aktivieren (wird für einige MIBs bei Ubuntu benötigt)
-echo "[1/4] Installiere SNMP-Basispakete und MIBs..."
+# --- Netzwerkkonfiguration ---
+echo "[1/7] Konfiguriere Netzwerkinterface (10.10.254.1/24)..."
+ip addr add 10.10.254.1/24 dev eth0 2>/dev/null || true
+ip link set eth0 up
+ip route add default via 10.10.254.254 2>/dev/null || true
+
+# Persistente Netplan-Konfiguration (Ubuntu 22.04)
+cat << 'EOF' > /etc/netplan/01-snmp-server.yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      addresses:
+        - 10.10.254.1/24
+      routes:
+        - to: default
+          via: 10.10.254.254
+      nameservers:
+        addresses: []
+EOF
+netplan apply 2>/dev/null || true
+
+# --- Pakete installieren ---
+echo "[2/7] Installiere SNMP-Pakete..."
 add-apt-repository multiverse -y > /dev/null 2>&1
 apt-get update -qq
-apt-get install snmp snmptrapd snmp-mibs-downloader -y -qq
-
-# MIBs aktiv herunterladen, um sicherzugehen, dass sie vorhanden sind
+apt-get install snmp snmpd snmptrapd snmp-mibs-downloader -y -qq
 download-mibs > /dev/null 2>&1
 
-# In der Standardkonfiguration sind MIBs oft aus rechtlichen Gründen deaktiviert.
-echo "[2/4] Aktiviere MIBs (für lesbare OID-Namen)..."
-# Der Regex greift bei 'mibs:' und 'mibs :'
-sed -i 's/^mibs.*/# &/' /etc/snmp/snmp.conf
+# MIBs aktivieren
+echo "[3/7] Aktiviere MIBs (fuer lesbare OID-Namen)..."
+sed -i 's/^mibs.*/# &/' /etc/snmp/snmp.conf 2>/dev/null || true
+echo "mibs +ALL" >> /etc/snmp/snmp.conf
 
-# Erstellt eine Konfiguration, die Traps aufzeichnet
-echo "[3/4] Konfiguriere snmptrapd..."
-cat << 'EOF' > /etc/snmp/snmptrapd.conf
-# Erlaube Traps mit der Community 'public' ins Syslog zu schreiben
-authCommunity log,execute,net public
+# --- snmpd konfigurieren (lokaler SNMP-Agent) ---
+echo "[4/7] Konfiguriere snmpd (lokaler Agent)..."
+cat << 'EOF' > /etc/snmp/snmpd.conf
+# AP 2.3 - SNMPv3 Read-Write User fuer Wien Management
+createUser bigtopo123 SHA bigtopo123 AES bigtopo123
+rwuser bigtopo123 priv
 
-disableAuthorization yes
+# Auf allen Interfaces horchen
+agentAddress udp:161,udp6:[::1]:161
+
+# System-Infos
+sysLocation Wien-Backbone Management Server
+sysContact DiagNet NOC <noc@diagnet.dev>
 EOF
 
-# Dienste neustarten und aktivieren
+# --- snmptrapd konfigurieren (Trap-Empfang) ---
+echo "[5/7] Konfiguriere snmptrapd (Trap-Empfaenger)..."
+cat << 'EOF' > /etc/snmp/snmptrapd.conf
+# AP 2.3 - SNMPv3 Traps von Wien-Geraeten empfangen
+authUser log,execute,net bigtopo123 priv
+
+# Legacy Traps erlauben
+authCommunity log,execute,net public
+disableAuthorization yes
+
+# Trap-Log
+logOption f /var/log/snmp/wien-traps.log
+EOF
+
+mkdir -p /var/log/snmp
+
+# --- SNMPv3 Client-Konfiguration (fuer snmpwalk/snmpget/snmpset) ---
+echo "[6/7] Konfiguriere SNMPv3 Client-Profil..."
+mkdir -p /root/.snmp
+cat << 'EOF' > /root/.snmp/snmp.conf
+# AP 2.3 - SNMPv3 Standardkonfiguration fuer Wien-Abfragen
+defVersion 3
+defSecurityName bigtopo123
+defSecurityLevel authPriv
+defAuthType SHA
+defPrivType AES
+defAuthPassphrase bigtopo123
+defPrivPassphrase bigtopo123
+EOF
+
+# --- Firewall konfigurieren ---
+echo "[7/7] Konfiguriere Firewall (UFW)..."
+ufw allow 161/udp comment 'SNMP Queries'
+ufw allow 162/udp comment 'SNMP Traps'
+
+# --- Dienste starten ---
+systemctl restart snmpd
+systemctl enable snmpd
 systemctl restart snmptrapd
 systemctl enable snmptrapd
 
-echo "[4/4] Konfiguriere Firewall (UFW) für Port 162 (SNMP Traps UDP)..."
-ufw allow 162/udp comment 'SNMP Traps'
-
 echo "======================================================"
-echo "✅ SNMP-Basiseinrichtung abgeschlossen!"
-echo "Der Server kann nun SNMP Traps (Port 162) empfangen."
-echo "Du kannst nun aktiv Geräte mit snmpget, snmpwalk und snmpset abfragen."
+echo "SNMP-Server fuer Wien erfolgreich eingerichtet!"
+echo ""
+echo "Server-IP:   10.10.254.1"
+echo "SNMPv3-User: bigtopo123 (Auth: SHA | Priv: AES-128)"
+echo ""
+echo "Wien-Geraete (SNMP-Targets):"
+echo "  BB-Geraete (Read-Write):"
+echo "    WIE-BB-1:  10.10.255.1"
+echo "    WIE-BB-2:  10.10.255.2"
+echo "  POP-Geraete (Read-Only):"
+echo "    WIE-POP-1: 10.10.255.11"
+echo "    WIE-POP-2: 10.10.255.12"
+echo "    WIE-POP-3: 10.10.255.13"
+echo "    WIE-POP-4: 10.10.255.14"
+echo ""
+echo "Beispiel-Abfragen:"
+echo "  # Lesen (alle Geraete - POP + BB):"
+echo "  snmpwalk -v3 -u bigtopo123 -l authPriv -a SHA -A bigtopo123 -x AES -X bigtopo123 10.10.255.1 system"
+echo "  snmpget  -v3 -u bigtopo123 -l authPriv -a SHA -A bigtopo123 -x AES -X bigtopo123 10.10.255.11 sysName.0"
+echo ""
+echo "  # Schreiben (nur BB-Geraete):"
+echo "  snmpset  -v3 -u bigtopo123 -l authPriv -a SHA -A bigtopo123 -x AES -X bigtopo123 10.10.255.1 sysContact.0 s 'DiagNet NOC'"
+echo ""
+echo "  # Mit Client-Profil (kuerzer):"
+echo "  snmpwalk 10.10.255.1 system"
+echo "  snmpset  10.10.255.1 sysContact.0 s 'DiagNet NOC'"
 echo "======================================================"

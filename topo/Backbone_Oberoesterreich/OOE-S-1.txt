@@ -44,7 +44,12 @@ int fa0/2
  no shut
 
 int fa0/24
- description UPLINK_TO_OOE-BB-2
+ description UPLINK_TO_OOE-BB-3
+ switchport mode access
+ no shut
+
+int fa0/23
+ description UPLINK_TO_OOE-BB-1
  switchport mode access
  no shut
 
