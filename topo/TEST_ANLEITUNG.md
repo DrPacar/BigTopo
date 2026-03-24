@@ -3,13 +3,50 @@
 ## Voraussetzungen
 
 - GNS3 (Version 2.2+) installiert
-- VirtualBox mit Ubuntu 22.04 LTS VM
 - BigTopo-Topologie in GNS3 geladen
-- VM hat mindestens 2 Netzwerkadapter konfiguriert (fuer Wien: SNMP + Syslog)
+- `net-snmp-utils` auf dem Host installiert (`sudo dnf install net-snmp-utils`)
+
+> **Empfohlen: Option C - kein Ubuntu nötig!**
+> Der Fedora-Host verbindet sich direkt per TAP-Interface mit GNS3.
+> Setup-Skript: `sudo bash topo/setup_host_test.sh wien` (oder `ooe`)
 
 ---
 
-## 1. VirtualBox VM vorbereiten
+## 1. Host-Test (Option C - empfohlen, kein Ubuntu nötig)
+
+### 1.1 Setup-Skript ausfuehren
+
+```bash
+# Wien testen (AP 2.3):
+sudo bash /pfad/zu/BigTopo/topo/setup_host_test.sh wien
+
+# OOE testen (AP 3.3):
+sudo bash /pfad/zu/BigTopo/topo/setup_host_test.sh ooe
+
+# Aufraeumen:
+sudo bash /pfad/zu/BigTopo/topo/setup_host_test.sh clean
+```
+
+Das Skript erstellt automatisch:
+- TAP-Interface `tap-bigtopo` auf dem Host
+- IP 10.10.254.1 + 10.10.254.10 (Wien) bzw. 10.6.254.1 (OOE)
+- Route zum jeweiligen Backbone
+- rsyslog-Empfang auf Port 514
+
+### 1.2 GNS3: Cloud-Node verbinden
+
+1. GNS3 oeffnen, BigTopo-Projekt laden
+2. **Cloud-Node** in die Topologie ziehen (aus der Geraete-Liste)
+3. Cloud-Node **doppelklicken** → Reiter **"Ethernet interfaces"**
+4. Interface **`tap-bigtopo`** auswaehlen und hinzufuegen
+5. Cloud-Node verbinden mit:
+   - **Wien**: Cloud → WIE-POP-1 **gig0/1**
+   - **OOE**: Cloud → OOE-BB-1 **gig0/2** (oder OOE-S-1 fa0/1)
+6. Topologie starten
+
+---
+
+## 1b. VirtualBox VM vorbereiten (Option A/B - falls doch VM gewuenscht)
 
 ### VM-Netzwerkadapter in VirtualBox konfigurieren
 
