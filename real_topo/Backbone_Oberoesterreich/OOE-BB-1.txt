@@ -1,0 +1,78 @@
+en
+conf t
+hostname OOE-BB-1
+banner motd #DiagNet WAN Topology#
+service password-encryption
+no ip domain lookup
+
+username cisco secret cisco
+username cisco priv 15
+
+ip domain-name diagnet.dev
+ip ssh version 2
+crypto key gen rsa g m 1024
+
+line con 0
+login local
+logging sync
+exec-timeout 0
+
+line vty 0 924
+login local
+logging sync
+exec-timeout 0
+transport input ssh telnet
+
+# Interfaces
+int Loopback0
+ip address 10.6.0.1 255.255.255.255
+ip router isis
+no shut
+
+int gig0/0
+ip address 10.6.5.2 255.255.255.0
+ip router isis
+mpls ip
+no shut
+
+int gig0/1
+ip address 10.6.6.1 255.255.255.0
+ip router isis
+mpls ip
+no shut
+
+int gig0/2
+ip address 10.6.3.2 255.255.255.0
+ip router isis
+isis network point-to-point
+isis circuit-type level-1
+mpls ip
+no shut
+
+# IS-IS Configuration
+router isis
+net 49.0001.0000.0000.0001.00
+is-type level-1-2
+metric-style wide
+redistribute isis ip level-2 into level-1 route-map LEAK-L2-TO-L1
+log-adjacency-changes
+
+route-map LEAK-L2-TO-L1 permit 10
+match ip address any
+
+ip access-list standard any
+ permit any
+
+
+# MPLS Configuration
+mpls label protocol ldp
+mpls ldp router-id Loopback0 force
+
+# SNMP Konfiguration (AP 3.3)
+# BB-Router: Read-Write Zugriff | SNMPv3 | Server: 10.6.254.1
+ip access-list standard ACL_SNMP_SERVER
+ permit 10.6.254.1
+
+snmp-server view VIEW_RW iso included
+snmp-server group GROUP_RW v3 priv read VIEW_RW write VIEW_RW access ACL_SNMP_SERVER
+snmp-server user bigtopo123 GROUP_RW v3 auth sha bigtopo123 priv aes 128 bigtopo123

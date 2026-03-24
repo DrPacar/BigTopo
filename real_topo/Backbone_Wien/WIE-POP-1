@@ -1,0 +1,153 @@
+en
+conf t
+hostname WIE-POP-1
+banner motd #DiagNet WAN Topology#
+service password-encryption
+no ip domain lookup
+
+username cisco secret cisco
+username cisco priv 15
+
+ip domain-name diagnet.dev
+ip ssh version 2
+crypto key gen rsa g m 1024
+
+line con 0
+login local
+logging sync
+exec-timeout 0
+
+line vty 0 924
+login local
+logging sync
+exec-timeout 0
+transport input ssh telnet
+
+# Interfaces
+int lo0
+ ip address 10.10.255.11 255.255.255.255
+ ipv6 enable
+ no shut
+
+int lo1
+ ip address 10.10.255.21 255.255.255.255
+ ipv6 enable
+ no shut
+
+int gig0/0
+ ip address 10.10.1.1 255.255.255.0
+ ipv6 enable
+ no shut
+
+# AP 2.3 - Management Interface fuer Syslog/SNMP-Zugang
+int gig0/1
+ ip address 10.10.254.254 255.255.255.0
+ description TO_MGMT_NETWORK
+ no shut
+ ospfv3 1 ipv4 area 0
+
+# SNMP
+ip access-list standard ACL_SNMP_SERVER
+ permit 10.10.254.1
+ exit
+snmp-server view VIEW_RO iso included
+snmp-server group GROUP_RO v3 priv read VIEW_RO access ACL_SNMP_SERVER
+snmp-server user bigtopo123 GROUP_RO v3 auth sha bigtopo123 priv aes 128 bigtopo123
+
+# AP 2.3 - Syslog Konfiguration
+service timestamps log datetime msec
+logging host 10.10.254.10
+logging trap informational
+logging source-interface Loopback0
+
+# AP 2.1 - OSPFv3 Underlay (authenticated)
+ipv6 unicast-routing
+
+key chain WIE_OSPF_KC
+ key 1
+  key-string diagnet123
+  cryptographic-algorithm hmac-sha-256
+
+router ospfv3 1
+ router-id 10.10.255.11
+ address-family ipv4 unicast
+  area 0 authentication key-chain WIE_OSPF_KC
+
+int lo0
+ ospfv3 1 ipv4 area 0
+ ospfv3 1 ipv4 network point-to-point
+
+int lo1
+ ospfv3 1 ipv4 area 0
+ ospfv3 1 ipv4 network point-to-point
+
+int gig0/0
+ ospfv3 1 ipv4 area 0
+ ospfv3 1 ipv4 network point-to-point
+
+# AP 2.1 - IPsec fuer DMVPN
+crypto isakmp policy 10
+ encryption aes
+ hash sha
+ authentication pre-share
+ group 2
+ lifetime 86400
+crypto isakmp key dmvpn123 address 0.0.0.0
+
+crypto ipsec transform-set DMVPN_TSET esp-aes esp-sha-hmac
+ mode transport
+
+crypto ipsec profile DMVPN_PROFILE
+ set transform-set DMVPN_TSET
+
+# AP 2.1 - DMVPN Spoke Cloud 1 (Hub: WIE-BB-1)
+int tunnel 1
+ description DMVPN-Spoke-Cloud1
+ ip address 10.10.100.11 255.255.255.0
+ no shut
+ tunnel source lo0
+ tunnel mode gre multipoint
+ tunnel protection ipsec profile DMVPN_PROFILE
+ ip nhrp network-id 1
+ ip nhrp authentication dmvpn123
+ ip nhrp nhs 10.10.100.1 nbma 10.10.255.1 multicast
+ ip nhrp map multicast 10.10.255.1
+ ip nhrp shortcut
+
+# AP 2.1 - DMVPN Spoke Cloud 2 (Hub: WIE-BB-2)
+int tunnel 2
+ description DMVPN-Spoke-Cloud2
+ ip address 10.10.101.11 255.255.255.0
+ no shut
+ tunnel source lo1
+ tunnel mode gre multipoint
+ tunnel protection ipsec profile DMVPN_PROFILE
+ ip nhrp network-id 2
+ ip nhrp authentication dmvpn123
+ ip nhrp nhs 10.10.101.1 nbma 10.10.255.2 multicast
+ ip nhrp map multicast 10.10.255.2
+ ip nhrp shortcut
+
+# AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN)
+router eigrp 100
+ network 10.10.100.0 0.0.0.255
+ network 10.10.101.0 0.0.0.255
+ no auto-summary
+
+# AP 2.2 - BGP Route Reflector 1
+router bgp 3
+ bgp router-id 10.10.255.11
+ bgp log-neighbor-changes
+ neighbor RR-CLIENTS peer-group
+ neighbor RR-CLIENTS remote-as 3
+ neighbor RR-CLIENTS update-source lo0
+ neighbor RR-CLIENTS route-reflector-client
+ neighbor 10.10.255.12 peer-group RR-CLIENTS
+ neighbor 10.10.255.14 peer-group RR-CLIENTS
+ neighbor 10.10.255.13 remote-as 3
+ neighbor 10.10.255.13 update-source lo0
+ !
+ address-family ipv4
+  network 10.10.0.0 mask 255.255.0.0
+  neighbor RR-CLIENTS activate
+  neighbor 10.10.255.13 activate

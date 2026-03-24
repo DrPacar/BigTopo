@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# AP 2.3 - Syslog-Server fuer Backbone Wien
+# Ubuntu/Linux Server | IP: 10.10.254.10/24 | Gateway: 10.10.254.254 (WIE-POP-1)
+# Empfaengt Syslog-Nachrichten aller Wien-Netzwerkkomponenten
+# rsyslog auf Port 514 (UDP + TCP)
+# Logs: /var/log/network/<HOSTNAME>/
+
+if [ "$EUID" -ne 0 ]; then
+  echo "Fehler: Bitte als Root ausfuehren (sudo ./WIE-SYSLOG)"
+  exit 1
+fi
+
+echo "Starte Syslog-Server Einrichtung fuer Backbone Wien..."
+
+# --- Netzwerkkonfiguration ---
+echo "[1/7] Konfiguriere Netzwerkinterface (10.10.254.10/24)..."
+ip addr add 10.10.254.10/24 dev eth0 2>/dev/null || true
+ip link set eth0 up
+ip route add default via 10.10.254.254 2>/dev/null || true
+
+# Persistente Netplan-Konfiguration (Ubuntu 22.04)
+cat << 'EOF' > /etc/netplan/01-syslog-server.yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      addresses:
+        - 10.10.254.10/24
+      routes:
+        - to: default
+          via: 10.10.254.254
+      nameservers:
+        addresses: []
+EOF
+netplan apply 2>/dev/null || true
+
+# --- rsyslog installieren ---
+echo "[2/7] Installiere rsyslog..."
+apt-get update -qq
+apt-get install rsyslog -y -qq
+
+# --- rsyslog Konfiguration ---
+echo "[3/7] Erstelle rsyslog-Konfiguration fuer externe Geraete..."
+cat << 'EOF' > /etc/rsyslog.d/50-network-devices.conf
+# AP 2.3 - Syslog-Empfang von Wien-Netzwerkkomponenten
+
+# UDP-Empfang auf Port 514
+module(load="imudp")
+input(type="imudp" port="514")
+
+# TCP-Empfang auf Port 514
+module(load="imtcp")
+input(type="imtcp" port="514")
+
+# Logs nach Hostnamen sortieren: /var/log/network/<HOSTNAME>/
+template(name="RemoteDeviceLogs" type="string"
+    string="/var/log/network/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%-syslog.log")
+
+# Alle externen Nachrichten in separate Dateien schreiben
+if ($fromhost-ip != '127.0.0.1') then {
+    action(type="omfile" dynaFile="RemoteDeviceLogs"
+           fileCreateMode="0644"
+           dirCreateMode="0755"
+           fileOwner="syslog"
+           fileGroup="adm")
+    stop
+}
+EOF
+
+# --- Zielverzeichnis erstellen ---
+echo "[4/7] Erstelle Zielverzeichnis /var/log/network/..."
+mkdir -p /var/log/network/
+chown syslog:adm /var/log/network/
+chmod 755 /var/log/network/
+
+# --- Logrotation konfigurieren ---
+echo "[5/7] Konfiguriere Logrotation..."
+cat << 'EOF' > /etc/logrotate.d/network-devices
+/var/log/network/*/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0644 syslog adm
+    sharedscripts
+    postrotate
+        /usr/lib/rsyslog/rsyslog-rotate 2>/dev/null || systemctl restart rsyslog
+    endscript
+}
+EOF
+
+# --- Firewall konfigurieren ---
+echo "[6/7] Konfiguriere Firewall (UFW) fuer Port 514 (TCP/UDP)..."
+ufw allow 514/tcp comment 'Syslog TCP'
+ufw allow 514/udp comment 'Syslog UDP'
+
+# --- rsyslog Dienst starten ---
+echo "[7/7] Starte rsyslog Dienst..."
+systemctl restart rsyslog
+systemctl enable rsyslog
+
+echo "======================================================"
+echo "Syslog-Server fuer Wien erfolgreich eingerichtet!"
+echo ""
+echo "Server-IP:  10.10.254.10"
+echo "Gateway:    10.10.254.254 (WIE-POP-1 gig0/1)"
+echo "Port:       514 (UDP + TCP)"
+echo "Log-Pfad:   /var/log/network/<HOSTNAME>/"
+echo ""
+echo "Wien-Netzwerkkomponenten:"
+echo "  WIE-BB-1:  10.10.255.1   WIE-BB-2:  10.10.255.2"
+echo "  WIE-POP-1: 10.10.255.11  WIE-POP-2: 10.10.255.12"
+echo "  WIE-POP-3: 10.10.255.13  WIE-POP-4: 10.10.255.14"
+echo ""
+echo "Test: logger -n 10.10.254.10 -P 514 'Test-Nachricht von Wien'"
+echo "======================================================"
