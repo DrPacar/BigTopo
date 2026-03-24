@@ -13,13 +13,17 @@
 
 ### VM-Netzwerkadapter in VirtualBox konfigurieren
 
-Die Ubuntu-VM benoetigt fuer Wien **zwei** Netzwerkadapter (SNMP-Server + Syslog-Server) und fuer OOE **einen** Adapter (SNMP-Server).
+Die Ubuntu-VM benoetigt **einen zusaetzlichen Adapter** fuer GNS3 (Adapter 1 = NAT bleibt unveraendert).
 
 1. VirtualBox oeffnen, VM auswaehlen, **Einstellungen** > **Netzwerk**
-2. **Adapter 1**: "Nicht angeschlossen" (wird von GNS3 gesteuert)
-3. **Adapter 2**: "Nicht angeschlossen" (wird von GNS3 gesteuert, nur Wien)
-4. **Erweitert** > Adaptertyp: **Intel PRO/1000 MT Desktop (82540EM)**
-5. **Promiscuous-Modus**: "Alle erlauben"
+2. **Adapter 1**: NAT belassen (fuer Internet-Zugang der VM) - Promiscuous "Deny" ist bei NAT normal und unveraenderbar
+3. **Adapter 2** (Tab anklicken):
+   - Haken bei "Enable Network Adapter" setzen
+   - **Attached to**: `Not attached` (Nicht angeschlossen)
+   - **Erweitert** > Adaptertyp: **Intel PRO/1000 MT Desktop (82540EM)**
+   - **Promiscuous-Modus**: Bleibt zunaechst "Deny" - GNS3 setzt diesen automatisch auf "Allow All" wenn die VM in die Topologie gezogen wird
+
+> **Hinweis**: NAT-Adapter haben immer gesperrtes Promiscuous Mode (ausgegraut) - das ist normales VirtualBox-Verhalten und kein Fehler. GNS3 benoetigt Promiscuous Mode nur auf dem Adapter, den es selbst verwaltet (Adapter 2).
 
 ---
 
