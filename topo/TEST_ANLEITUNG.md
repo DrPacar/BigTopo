@@ -9,23 +9,24 @@
 
 ## Schritt 1: TAP-Interface erstellen
 
-Das TAP-Interface verbindet den Fedora-Host direkt mit GNS3 (keine VM noetig).
+Das TAP-Interface `tap-bigtopo` verbindet den Fedora-Host direkt mit GNS3 (keine VM noetig).
+**Wien und OOE werden getrennt getestet** -- es gibt nur ein TAP-Interface.
+Das Skript konfiguriert es jeweils fuer den gewuenschten Standort neu.
 
-### Wien (AP 2.3):
+### Fuer Wien-Test (AP 2.3):
 ```bash
 sudo bash /home/dxnijel_s/Documents/BigTopo/topo/setup_host_test.sh wien
 ```
+Erstellt `tap-bigtopo` mit IP 10.10.254.1 + 10.10.254.10, Route 10.10.0.0/16
 
-### OOE (AP 3.3):
+### Fuer OOE-Test (AP 3.3):
 ```bash
 sudo bash /home/dxnijel_s/Documents/BigTopo/topo/setup_host_test.sh ooe
 ```
+Erstellt `tap-bigtopo` mit IP 10.6.254.1, Route 10.6.0.0/16
 
-Das Skript erstellt automatisch:
-- TAP-Interface `tap-bigtopo` (persistent via nmcli, ueberlebt Reboot)
-- IP 10.10.254.1 + 10.10.254.10 (Wien) bzw. 10.6.254.1 (OOE)
-- Route zum jeweiligen Backbone
-- rsyslog-Empfang auf Port 514 (nur Wien)
+> **Wichtig**: Immer nur einen Standort gleichzeitig testen.
+> Vor dem Wechsel: `sudo bash .../setup_host_test.sh clean` ausfuehren.
 
 ---
 
@@ -37,8 +38,9 @@ Das Skript erstellt automatisch:
 4. **Refresh** klicken → `tap-bigtopo` erscheint in der Dropdown-Liste
 5. `tap-bigtopo` auswaehlen → **Add** klicken
 6. Cloud-Node mit dem Router verbinden:
-   - **Wien**: Cloud → **WIE-POP-1 gig0/1**
-   - **OOE**: Cloud → **OOE-BB-1 gig0/2**
+   - Fuer **Wien-Test**: Cloud → **WIE-POP-1 gig0/1**
+   - Fuer **OOE-Test**: Cloud → **OOE-BB-1 gig0/2**
+   (jeweils nur eine Verbindung gleichzeitig)
 7. Topologie starten (Play-Button)
 
 ---
