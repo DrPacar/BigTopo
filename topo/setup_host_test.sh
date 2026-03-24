@@ -21,9 +21,11 @@ OOE_SNMP="10.6.254.1"       # OOE SNMP-Server IP
 
 clean_up() {
   echo "[*] Raeume auf..."
+  nmcli connection delete "$TAP_IF" 2>/dev/null || true
   ip link del "$TAP_IF" 2>/dev/null || true
   systemctl stop rsyslog-bigtopo 2>/dev/null || true
   rm -f /etc/rsyslog.d/60-bigtopo-test.conf
+  systemctl restart rsyslog 2>/dev/null || true
   echo "[*] Fertig."
 }
 
@@ -36,16 +38,20 @@ setup_wien() {
   echo " Gateway:       $WIEN_GW (WIE-POP-1 gig0/1)"
   echo "======================================================"
 
-  # TAP Interface erstellen
-  echo "[1/5] Erstelle TAP-Interface '$TAP_IF'..."
+  # TAP Interface erstellen (nmcli - persistent auf Fedora)
+  echo "[1/5] Erstelle TAP-Interface '$TAP_IF' via nmcli..."
+  nmcli connection delete "$TAP_IF" 2>/dev/null || true
   ip tuntap del "$TAP_IF" mode tap 2>/dev/null || true
-  ip tuntap add "$TAP_IF" mode tap user "$SUDO_USER"
-  ip link set "$TAP_IF" up
+  nmcli connection add type tun ifname "$TAP_IF" con-name "$TAP_IF" \
+      mode tap owner "$(id -u "$SUDO_USER")" \
+      ipv4.method manual \
+      ipv4.addresses "$WIEN_SNMP/24" \
+      ipv6.method ignore
+  nmcli connection up "$TAP_IF"
   ip link set "$TAP_IF" promisc on
 
-  # IPs fuer SNMP und Syslog auf das TAP-Interface
-  echo "[2/5] Weise IPs zu..."
-  ip addr add "$WIEN_SNMP/24"   dev "$TAP_IF" 2>/dev/null || true
+  # Zweite IP fuer Syslog-Server
+  echo "[2/5] Weise zweite IP ($WIEN_SYSLOG) zu..."
   ip addr add "$WIEN_SYSLOG/24" dev "$TAP_IF" 2>/dev/null || true
 
   # Routing: Wien-Backbone via WIE-POP-1
@@ -100,16 +106,18 @@ setup_ooe() {
   echo " Gateway:       $OOE_GW (OOE-BB-1 gig0/2)"
   echo "======================================================"
 
-  echo "[1/3] Erstelle TAP-Interface '$TAP_IF'..."
+  echo "[1/3] Erstelle TAP-Interface '$TAP_IF' via nmcli..."
+  nmcli connection delete "$TAP_IF" 2>/dev/null || true
   ip tuntap del "$TAP_IF" mode tap 2>/dev/null || true
-  ip tuntap add "$TAP_IF" mode tap user "$SUDO_USER"
-  ip link set "$TAP_IF" up
+  nmcli connection add type tun ifname "$TAP_IF" con-name "$TAP_IF" \
+      mode tap owner "$(id -u "$SUDO_USER")" \
+      ipv4.method manual \
+      ipv4.addresses "$OOE_SNMP/24" \
+      ipv6.method ignore
+  nmcli connection up "$TAP_IF"
   ip link set "$TAP_IF" promisc on
 
-  echo "[2/3] Weise IPs zu..."
-  ip addr add "$OOE_SNMP/24" dev "$TAP_IF" 2>/dev/null || true
-
-  echo "[3/3] Setze Route fuer OOE-Backbone..."
+  echo "[2/3] Setze Route fuer OOE-Backbone..."
   ip route add 10.6.0.0/16 via "$OOE_GW" dev "$TAP_IF" 2>/dev/null || true
 
   echo ""
