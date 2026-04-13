@@ -1,0 +1,89 @@
+en
+conf t
+hostname WIE-SW
+banner motd #DiagNet WAN Topology#
+service password-encryption
+no ip domain lookup
+
+username cisco secret cisco
+enable secret cisco
+username cisco priv 15
+
+ip domain-name diagnet.dev
+ip ssh version 2
+crypto key gen rsa g m 1024
+
+line con 0
+login local
+logging sync
+exec-timeout 0
+
+line vty 0 924
+login local
+logging sync
+exec-timeout 0
+transport input ssh telnet
+
+vlan 151
+name VLAN151
+
+vlan 152
+name VLAN152
+
+vlan 153
+name VLAN153
+
+vlan 154
+name VLAN154
+
+vlan 155
+name VLAN155
+
+vlan 156
+name VLAN156
+
+vlan 501
+name VLAN501
+
+vlan 503
+name VLAN503
+
+vlan 504
+name VLAN504
+
+int gig0/0/1
+no shut
+switchport mode trunk
+switchport trunk allowed vlan 155
+desc to_VIE_POP1
+
+int gig0/0/2
+no shut
+switchport mode trunk
+switchport trunk allowed vlan 156
+desc to_VIE_POP2
+
+int gig0/0/3
+no shut
+switchport mode trunk
+switchport trunk allowed vlan 152,504
+desc to_VIE_POP3
+
+int gig0/0/4
+no shut
+switchport mode trunk
+switchport trunk allowed vlan 151,501,503
+desc to_VIE_POP4
+
+int gig0/0/5
+no shut
+switchport mode trunk
+switchport trunk allowed vlan 153,154,155,156
+desc to_VIE_BB1
+
+int gig0/0/6
+no shut
+switchport mode trunk
+switchport trunk allowed vlan 151,152,153,154
+desc to_VIE_BB2
+
