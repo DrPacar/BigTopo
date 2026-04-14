@@ -1,0 +1,91 @@
+en
+conf t
+hostname OOE-SW
+banner motd #DiagNet WAN Topology#
+service password-encryption
+no ip domain lookup
+
+username cisco secret cisco
+enable secret cisco
+username cisco priv 15
+
+ip domain-name diagnet.dev
+ip ssh version 2
+crypto key gen rsa g m 1024
+
+line con 0
+login local
+logging sync
+exec-timeout 0
+
+line vty 0 924
+login local
+logging sync
+exec-timeout 0
+transport input ssh telnet
+
+vlan 201
+name VLAN201
+
+vlan 202
+name VLAN202
+
+vlan 203
+name VLAN203
+
+vlan 204
+name VLAN204
+
+vlan 210
+name VLAN210
+
+vlan 220
+name VLAN220
+
+vlan 502
+name VLAN502
+
+vlan 505
+name VLAN505
+
+vlan 506
+name VLAN506
+
+vlan 507
+name VLAN507
+
+int g1/0/1
+switchport mode trunk
+switchport trunk allowed vlan 502,201
+desc to_OOE_POP_1
+
+int g1/0/2
+switchport mode trunk
+switchport trunk allowed vlan 202,203,505
+desc to_OOE_POP_2
+
+int g1/0/3
+switchport mode trunk
+switchport trunk allowed vlan 203,204,506
+desc to_OOE_POP_3
+
+int g1/0/4
+switchport mode trunk
+switchport trunk allowed vlan 507,204
+desc to_OOE_POP_4
+
+int g1/0/5
+switchport mode trunk
+switchport trunk allowed vlan 201,202,210
+desc to_OOE_BB_1
+
+int g1/0/6
+switchport mode trunk
+switchport trunk allowed vlan 210,220
+desc to_OOE_BB_2
+
+int g1/0/7
+switchport mode trunk
+switchport trunk allowed vlan 220,204
+desc to_OOE_BB_3
+

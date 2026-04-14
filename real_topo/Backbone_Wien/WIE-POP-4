@@ -29,18 +29,13 @@ int lo0
  ipv6 enable
  no shut
 
-int gig0/0
+int f0/0
+no shut
+
+int f0/0.151
+encapsulation dot1q 151
+desc to_BB2
  ip address 10.10.4.1 255.255.255.0
- ipv6 enable
- no shut
-
-int gig0/1
- ip address 172.16.3.1 255.255.255.0
- ipv6 enable
- no shut
-
-int gig0/2
- ip address 10.9.0.1 255.255.0.0
  ipv6 enable
  no shut
 
@@ -75,7 +70,7 @@ int lo0
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
-int gig0/0
+int f0/0.151
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 

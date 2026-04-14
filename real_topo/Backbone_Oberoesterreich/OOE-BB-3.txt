@@ -17,7 +17,7 @@ login local
 logging sync
 exec-timeout 0
 
-line vty 0 924
+line vty 0 807
 login local
 logging sync
 exec-timeout 0
@@ -29,17 +29,25 @@ ip address 10.6.0.3 255.255.255.255
 ip router isis
 no shut
 
-int gig0/3
+int f0/0
+no shut
+
+int f0/0.220
+encapsulation dot1q 220
 ip address 10.6.4.1 255.255.255.0
 ip router isis
 mpls ip
 no shut
+desc to_BB2
 
-int gig0/2
+int f0/0.204
+encapsulation dot1q 204
 ip address 10.6.1.3 255.255.255.0
 ip router isis
 mpls ip
 no shut
+desc to_OOE_SW
+
 
 # IS-IS Configuration
 router isis
@@ -60,12 +68,6 @@ ip access-list standard any
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
 
-# Interface zu OOE-S-1 SNMP-Management (AP 3.3)
-int gig0/1
- ip address 10.6.254.252 255.255.255.0
- description TO_OOE-S-1_MGMT
- ip router isis
- no shut
 
 # AP 3.2 - OOE-BB-3 ist reiner IS-IS/MPLS Core-Router (P-Router)
 # BGP nicht benoetigt - Loopback-Erreichbarkeit via IS-IS/MPLS

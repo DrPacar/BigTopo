@@ -17,7 +17,7 @@ login local
 logging sync
 exec-timeout 0
 
-line vty 0 924
+line vty 0 807
 login local
 logging sync
 exec-timeout 0
@@ -29,11 +29,16 @@ ip address 10.6.0.11 255.255.255.255
 ip router isis
 no shut
 
-int gig0/1
+int f0/0
+no shut
+
+int f0/0.201
+encapsulation dot1q 201
 ip address 10.6.6.2 255.255.255.0
 ip router isis
 mpls ip
 no shut
+desc to_BB_1
 
 # IS-IS Configuration
 router isis
@@ -41,21 +46,22 @@ router isis
  is-type level-1
  metric-style wide
  log-adjacency-changes
+ exit
 
 # MPLS Configuration
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
 
 # Externes Interface
-int gig0/0
- ip address 172.16.11.2 255.255.255.0
- description TO_INTERNET_11
- no shut
+#int gig0/0
+# ip address 172.16.11.2 255.255.255.0
+# description TO_INTERNET_11
+# no shut
 
-int gig0/2
- ip address 172.16.12.254 255.255.255.0
- description TO_INTERNET_12
- no shut
+#int gig0/2
+# ip address 172.16.12.254 255.255.255.0
+# description TO_INTERNET_12
+# no shut
 
 # BGP Konfiguration
 # Confederation Main-AS 6 | Sub-AS 61

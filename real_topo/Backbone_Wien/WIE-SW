@@ -51,37 +51,37 @@ name VLAN503
 vlan 504
 name VLAN504
 
-int gig0/0/1
+int gig1/0/1
 no shut
 switchport mode trunk
 switchport trunk allowed vlan 155
 desc to_VIE_POP1
 
-int gig0/0/2
+int gig1/0/2
 no shut
 switchport mode trunk
 switchport trunk allowed vlan 156
 desc to_VIE_POP2
 
-int gig0/0/3
+int gig1/0/3
 no shut
 switchport mode trunk
 switchport trunk allowed vlan 152,504
 desc to_VIE_POP3
 
-int gig0/0/4
+int gig1/0/4
 no shut
 switchport mode trunk
 switchport trunk allowed vlan 151,501,503
 desc to_VIE_POP4
 
-int gig0/0/5
+int gig1/0/5
 no shut
 switchport mode trunk
 switchport trunk allowed vlan 153,154,155,156
 desc to_VIE_BB1
 
-int gig0/0/6
+int gig1/0/6
 no shut
 switchport mode trunk
 switchport trunk allowed vlan 151,152,153,154

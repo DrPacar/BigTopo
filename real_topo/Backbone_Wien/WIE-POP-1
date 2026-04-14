@@ -35,16 +35,14 @@ int lo1
  no shut
 
 int gig0/0
- ip address 10.10.1.1 255.255.255.0
+no shut
+
+int gig0/0.155
+  encapsulation dot1q 155
+  ip address 10.10.1.1 255.255.255.0
  ipv6 enable
  no shut
-
-# AP 2.3 - Management Interface fuer Syslog/SNMP-Zugang
-int gig0/1
- ip address 10.10.254.254 255.255.255.0
- description TO_MGMT_NETWORK
- no shut
- ospfv3 1 ipv4 area 0
+ desc to_BB1
 
 # SNMP
 ip access-list standard ACL_SNMP_SERVER
@@ -81,7 +79,7 @@ int lo1
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
-int gig0/0
+int gig0/0.155
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 

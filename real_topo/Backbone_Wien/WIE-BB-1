@@ -29,25 +29,37 @@ int lo0
  ipv6 enable
  no shut
 
-int gig0/0
- ip address 10.10.1.2 255.255.255.0
- ipv6 enable
- no shut
+int f0/0
+no shut
 
-int gig0/1
- ip address 10.10.2.2 255.255.255.0
- ipv6 enable
- no shut
 
-int gig0/2
- ip address 10.10.6.1 255.255.255.0
- ipv6 enable
- no shut
+int f0/0.155
+encapsulation dot1q 155
+ip address 10.10.1.2 255.255.255.0
+ipv6 enable
+no shut
+desc to_POP1
 
-int gig0/3
- ip address 10.10.3.1 255.255.255.0
+int f0/0.156
+encapsulation dot1q 156
+ip address 10.10.2.2 255.255.255.0
+ipv6 enable
+no shut
+desc to_POP2
+
+int f0/0.153
+encapsulation dot1q 153
+ip address 10.10.6.1 255.255.255.0
  ipv6 enable
  no shut
+desc to_BB2_1
+
+int f0/0.154
+encapsulation dot1q 154
+ip address 10.10.3.1 255.255.255.0
+ ipv6 enable
+ no shut
+desc to_BB2_2
 
 # SNMP
 ip access-list standard ACL_SNMP_SERVER
@@ -80,19 +92,19 @@ int lo0
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
-int gig0/0
+int f0/0.156
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
-int gig0/1
+int f0/0.153
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
-int gig0/2
+int f0/0.154
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 
-int gig0/3
+int f0/0.153
  ospfv3 1 ipv4 area 0
  ospfv3 1 ipv4 network point-to-point
 

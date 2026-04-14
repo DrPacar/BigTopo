@@ -17,7 +17,7 @@ login local
 logging sync
 exec-timeout 0
 
-line vty 0 924
+line vty 0 807
 login local
 logging sync
 exec-timeout 0
@@ -29,25 +29,34 @@ ip address 10.6.0.1 255.255.255.255
 ip router isis
 no shut
 
-int gig0/0
+int f0/0
+no shut
+
+int f0/0.210
+encapsulation dot1q 210
 ip address 10.6.5.2 255.255.255.0
 ip router isis
 mpls ip
 no shut
+desc to_BB2
 
-int gig0/1
+int f0/0.201
+encapsulation dot1q 201
 ip address 10.6.6.1 255.255.255.0
 ip router isis
 mpls ip
 no shut
+desc to_POP_1
 
-int gig0/2
+int f0/0.202
+encapsulation dot1q 202
 ip address 10.6.3.2 255.255.255.0
 ip router isis
 isis network point-to-point
 isis circuit-type level-1
 mpls ip
 no shut
+desc to_POP_2
 
 # IS-IS Configuration
 router isis

@@ -35,19 +35,14 @@ int lo1
  no shut
 
 int gig0/0
- ip address 172.16.4.1 255.255.255.0
- ipv6 enable
- no shut
+no shut
 
-int gig0/1
- ip address 10.10.5.1 255.255.255.0
+int gig0/0.152
+encapsulation dot1q 152
+ip address 10.10.5.1 255.255.255.0
  ipv6 enable
  no shut
-
-int gig0/2
- ip address 172.16.6.254 255.255.255.0
- ipv6 enable
- no shut
+desc to_BB2
 
 # SNMP
 ip access-list standard ACL_SNMP_SERVER
