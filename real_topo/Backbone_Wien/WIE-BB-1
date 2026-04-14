@@ -37,6 +37,7 @@ int g0/0.155
 encapsulation dot1q 155
 ip address 10.10.1.2 255.255.255.0
 ipv6 enable
+bfd interval 100 min_rx 100 multiplier 3
 no shut
 desc to_POP1
 
@@ -44,6 +45,7 @@ int g0/0.156
 encapsulation dot1q 156
 ip address 10.10.2.2 255.255.255.0
 ipv6 enable
+bfd interval 100 min_rx 100 multiplier 3
 no shut
 desc to_POP2
 
@@ -51,6 +53,7 @@ int g0/0.153
 encapsulation dot1q 153
 ip address 10.10.6.1 255.255.255.0
  ipv6 enable
+ bfd interval 100 min_rx 100 multiplier 3
  no shut
 desc to_BB2_1
 
@@ -58,6 +61,7 @@ int g0/0.154
 encapsulation dot1q 154
 ip address 10.10.3.1 255.255.255.0
  ipv6 enable
+ bfd interval 100 min_rx 100 multiplier 3
  no shut
 desc to_BB2_2
 
@@ -85,6 +89,7 @@ key chain WIE_OSPF_KC
 router ospf 1
  router-id 10.10.255.1
  area 0 authentication message-digest
+ bfd all-interfaces
 
 int lo0
  ip ospf 1 area 0
@@ -106,42 +111,7 @@ int g0/0.154
  ip ospf network point-to-point
  ip ospf message-digest-key 1 md5 diagnet123
 
-int g0/0.153
+int g0/0.155
  ip ospf 1 area 0
  ip ospf network point-to-point
  ip ospf message-digest-key 1 md5 diagnet123
-
-# AP 2.1 - IPsec fuer DMVPN
-crypto isakmp policy 10
- encryption aes
- hash sha
- authentication pre-share
- group 2
- lifetime 86400
-crypto isakmp key dmvpn123 address 0.0.0.0
-
-crypto ipsec transform-set DMVPN_TSET esp-aes esp-sha-hmac
- mode transport
-
-crypto ipsec profile DMVPN_PROFILE
- set transform-set DMVPN_TSET
-
-# AP 2.1 - DMVPN Hub Cloud 1
-int tunnel 1
- description DMVPN-Hub-Cloud1
- ip address 10.10.100.1 255.255.255.0
- no shut
- tunnel source lo0
- tunnel mode gre multipoint
- tunnel protection ipsec profile DMVPN_PROFILE
- ip nhrp network-id 1
- ip nhrp authentication dmvpn123
- ip nhrp map multicast dynamic
- ip nhrp redirect
- no ip split-horizon eigrp 100
- no ip next-hop-self eigrp 100
-
-# AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN)
-router eigrp 100
- network 10.10.100.0 0.0.0.255
- no auto-summary

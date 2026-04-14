@@ -34,6 +34,10 @@ int lo1
  ipv6 enable
  no shut
 
+int lo100
+ ip address 10.10.110.3 255.255.255.255
+ no shut
+
 int gig0/0
 no shut
 
@@ -43,6 +47,12 @@ ip address 10.10.5.1 255.255.255.0
  ipv6 enable
  no shut
 desc to_BB2
+
+int gig0/0.504
+encapsulation dot1q 504
+ip address 172.16.4.1 255.255.255.0
+no shut
+desc to_Steiermark_2
 
 # SNMP
 ip access-list standard ACL_SNMP_SERVER
@@ -68,6 +78,7 @@ key chain WIE_OSPF_KC
 router ospf 1
  router-id 10.10.255.13
  area 0 authentication message-digest
+ bfd all-interfaces
 
 int lo0
  ip ospf 1 area 0
@@ -79,7 +90,7 @@ int lo1
  ip ospf network point-to-point
  ip ospf message-digest-key 1 md5 diagnet123
 
-int gig0/1
+int gig0/0.152
  ip ospf 1 area 0
  ip ospf network point-to-point
  ip ospf message-digest-key 1 md5 diagnet123
@@ -99,58 +110,60 @@ crypto ipsec transform-set DMVPN_TSET esp-aes esp-sha-hmac
 crypto ipsec profile DMVPN_PROFILE
  set transform-set DMVPN_TSET
 
-# AP 2.1 - DMVPN Spoke Cloud 1 (Hub: WIE-BB-1)
+# AP 2.1 - DMVPN Hub Cloud 1
 int tunnel 1
- description DMVPN-Spoke-Cloud1
+ description DMVPN-Hub-Cloud1
  ip address 10.10.100.13 255.255.255.0
  no shut
  tunnel source lo0
  tunnel mode gre multipoint
+ tunnel key 1
  tunnel protection ipsec profile DMVPN_PROFILE
  ip nhrp network-id 1
  ip nhrp authentication dmvpn123
- ip nhrp nhs 10.10.100.1 nbma 10.10.255.1 multicast
- ip nhrp map multicast 10.10.255.1
- ip nhrp shortcut
-
-# AP 2.1 - DMVPN Spoke Cloud 2 (Hub: WIE-BB-2)
-int tunnel 2
- description DMVPN-Spoke-Cloud2
- ip address 10.10.101.13 255.255.255.0
- no shut
- tunnel source lo1
- tunnel mode gre multipoint
- tunnel protection ipsec profile DMVPN_PROFILE
- ip nhrp network-id 2
- ip nhrp authentication dmvpn123
- ip nhrp nhs 10.10.101.1 nbma 10.10.255.2 multicast
- ip nhrp map multicast 10.10.255.2
- ip nhrp shortcut
+ ip nhrp map multicast dynamic
+ ip nhrp redirect
+ no ip split-horizon eigrp 100
+ no ip next-hop-self eigrp 100
 
 # AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN)
 router eigrp 100
  network 10.10.100.0 0.0.0.255
  network 10.10.101.0 0.0.0.255
+ network 10.10.110.3 0.0.0.0
  no auto-summary
 
 # AP 2.2 - BGP Route Reflector 2
 router bgp 3
- bgp router-id 10.10.255.13
+ bgp router-id 10.10.110.3
  bgp log-neighbor-changes
- neighbor RR-CLIENTS peer-group
- neighbor RR-CLIENTS remote-as 3
- neighbor RR-CLIENTS update-source lo0
- neighbor RR-CLIENTS route-reflector-client
- neighbor 10.10.255.12 peer-group RR-CLIENTS
- neighbor 10.10.255.14 peer-group RR-CLIENTS
- neighbor 10.10.255.11 remote-as 3
- neighbor 10.10.255.11 update-source lo0
+ neighbor 10.10.110.1 remote-as 3
+ neighbor 10.10.110.1 update-source lo100
+ neighbor 10.10.110.2 remote-as 3
+ neighbor 10.10.110.2 update-source lo100
+ neighbor 10.10.110.2 route-reflector-client
+ neighbor 10.10.110.4 remote-as 3
+ neighbor 10.10.110.4 update-source lo100
+ neighbor 10.10.110.4 route-reflector-client
+
+ # Steiermark
  neighbor 172.16.4.2 remote-as 4
+ neighbor 172.16.4.2 update-source gig0/0.504
  neighbor 172.16.4.2 password cisco
  neighbor 172.16.4.2 next-hop-self
- !
+
  address-family ipv4
-  network 10.10.0.0 mask 255.255.0.0
-  neighbor RR-CLIENTS activate
-  neighbor 10.10.255.11 activate
+  network 172.16.6.0 mask 255.255.255.0
+  network 172.16.4.0 mask 255.255.255.0
+  neighbor 10.10.110.1 activate
+  neighbor 10.10.110.2 activate
+  neighbor 10.10.110.4 activate
   neighbor 172.16.4.2 activate
+ exit-address-family
+
+
+int gig0/1
+ip address 172.16.6.254 255.255.255.0
+no shut
+desc to_Rossauer_Kaserne
+ to_Rossauer_Kaserne

@@ -29,6 +29,10 @@ int lo0
  ipv6 enable
  no shut
 
+int lo100
+ ip address 10.10.110.2 255.255.255.255
+ no shut
+
 int f0/0
 no shut
 
@@ -63,6 +67,7 @@ key chain WIE_OSPF_KC
 router ospf 1
  router-id 10.10.255.12
  area 0 authentication message-digest
+ bfd all-interfaces
 
 int lo0
  ip ospf 1 area 0
@@ -74,15 +79,71 @@ int f0/0.156
  ip ospf network point-to-point
  ip ospf message-digest-key 1 md5 diagnet123
 
+# AP 2.1 - IPsec fuer DMVPN
+crypto isakmp policy 10
+ encryption aes
+ hash sha
+ authentication pre-share
+ group 2
+ lifetime 86400
+crypto isakmp key dmvpn123 address 0.0.0.0
+
+crypto ipsec transform-set DMVPN_TSET esp-aes esp-sha-hmac
+ mode transport
+
+crypto ipsec profile DMVPN_PROFILE
+ set transform-set DMVPN_TSET
+
+# AP 2.1 - DMVPN Spoke Cloud 1 (Hub: WIE-POP-3)
+int tunnel 1
+ description DMVPN-Spoke-Cloud1
+ ip address 10.10.100.12 255.255.255.0
+ no shut
+ tunnel source lo0
+ tunnel mode gre multipoint
+ tunnel key 1
+ tunnel protection ipsec profile DMVPN_PROFILE
+ ip nhrp network-id 1
+ ip nhrp authentication dmvpn123
+ ip nhrp nhs 10.10.100.13
+ ip nhrp map 10.10.100.13 10.10.255.13
+ ip nhrp map multicast 10.10.255.13
+ ip nhrp shortcut
+
+# AP 2.1 - DMVPN Spoke Cloud 2 (Hub: WIE-POP-4)
+int tunnel 2
+ description DMVPN-Spoke-Cloud2
+ ip address 10.10.101.12 255.255.255.0
+ no shut
+ tunnel source lo0
+ tunnel mode gre multipoint
+ tunnel key 2
+ tunnel protection ipsec profile DMVPN_PROFILE
+ ip nhrp network-id 2
+ ip nhrp authentication dmvpn123
+ ip nhrp nhs 10.10.101.14
+ ip nhrp map 10.10.101.14 10.10.255.14
+ ip nhrp map multicast 10.10.255.14
+ ip nhrp shortcut
+
+# AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN)
+router eigrp 100
+ network 10.10.100.0 0.0.0.255
+ network 10.10.101.0 0.0.0.255
+ network 10.10.110.2 0.0.0.0
+ no auto-summary
+
 # AP 2.2 - BGP RR-Client
 router bgp 3
- bgp router-id 10.10.255.12
+ bgp router-id 10.10.110.2
  bgp log-neighbor-changes
- neighbor 10.10.255.11 remote-as 3
- neighbor 10.10.255.11 update-source lo0
- neighbor 10.10.255.13 remote-as 3
- neighbor 10.10.255.13 update-source lo0
+ neighbor 10.10.110.1 remote-as 3
+ neighbor 10.10.110.1 update-source lo100
+ neighbor 10.10.110.3 remote-as 3
+ neighbor 10.10.110.3 update-source lo100
  !
  address-family ipv4
-  neighbor 10.10.255.11 activate
-  neighbor 10.10.255.13 activate
+  neighbor 10.10.110.1 activate
+  neighbor 10.10.110.3 activate
+ exit-address-family
+ exit-address-family

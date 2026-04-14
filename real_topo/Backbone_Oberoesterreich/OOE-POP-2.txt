@@ -47,6 +47,11 @@ isis circuit-type level-1
 mpls ip
 desct to_BB2
 
+int f0/1
+ip router isis
+ip address 10.105.0.254 255.255.255.0
+no shut
+
 
 # IS-IS Configuration
 router isis

@@ -80,6 +80,7 @@ key chain WIE_OSPF_KC
 router ospf 1
  router-id 10.10.255.2
  area 0 authentication message-digest
+ bfd all-interfaces
 
 int lo0
  ip ospf 1 area 0
@@ -109,38 +110,3 @@ encapsulation dot1q 154
  ip ospf 1 area 0
  ip ospf network point-to-point
  ip ospf message-digest-key 1 md5 diagnet123
-
-# AP 2.1 - IPsec fuer DMVPN
-crypto isakmp policy 10
- encryption aes
- hash sha
- authentication pre-share
- group 2
- lifetime 86400
-crypto isakmp key dmvpn123 address 0.0.0.0
-
-crypto ipsec transform-set DMVPN_TSET esp-aes esp-sha-hmac
- mode transport
-
-crypto ipsec profile DMVPN_PROFILE
- set transform-set DMVPN_TSET
-
-# AP 2.1 - DMVPN Hub Cloud 2
-int tunnel 2
- description DMVPN-Hub-Cloud2
- ip address 10.10.101.1 255.255.255.0
- no shut
- tunnel source lo0
- tunnel mode gre multipoint
- tunnel protection ipsec profile DMVPN_PROFILE
- ip nhrp network-id 2
- ip nhrp authentication dmvpn123
- ip nhrp map multicast dynamic
- ip nhrp redirect
- no ip split-horizon eigrp 100
- no ip next-hop-self eigrp 100
-
-# AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN)
-router eigrp 100
- network 10.10.101.0 0.0.0.255
- no auto-summary

@@ -29,6 +29,10 @@ int lo0
  ipv6 enable
  no shut
 
+int lo100
+ ip address 10.10.110.4 255.255.255.255
+ no shut
+
 int f0/0
 no shut
 
@@ -38,6 +42,19 @@ desc to_BB2
  ip address 10.10.4.1 255.255.255.0
  ipv6 enable
  no shut
+
+int f0/0.501
+encapsulation dot1q 501
+desc to_Melk
+ip address 172.16.2.1 255.255.255.0
+no shut
+
+
+int f0/0.503
+encapsulation dot1q 503
+ip address 172.16.3.1 255.255.255.0
+desc to_Steiermark_1
+no shut
 
 # SNMP
 ip access-list standard ACL_SNMP_SERVER
@@ -63,6 +80,7 @@ key chain WIE_OSPF_KC
 router ospf 1
  router-id 10.10.255.14
  area 0 authentication message-digest
+ bfd all-interfaces
 
 int lo0
  ip ospf 1 area 0
@@ -74,6 +92,44 @@ int f0/0.151
  ip ospf network point-to-point
  ip ospf message-digest-key 1 md5 diagnet123
 
+# AP 2.1 - IPsec fuer DMVPN
+crypto isakmp policy 10
+ encryption aes
+ hash sha
+ authentication pre-share
+ group 2
+ lifetime 86400
+crypto isakmp key dmvpn123 address 0.0.0.0
+
+crypto ipsec transform-set DMVPN_TSET esp-aes esp-sha-hmac
+ mode transport
+
+crypto ipsec profile DMVPN_PROFILE
+ set transform-set DMVPN_TSET
+
+# AP 2.1 - DMVPN Hub Cloud 2
+int tunnel 2
+ description DMVPN-Hub-Cloud2
+ ip address 10.10.101.14 255.255.255.0
+ no shut
+ tunnel source lo0
+ tunnel mode gre multipoint
+ tunnel key 2
+ tunnel protection ipsec profile DMVPN_PROFILE
+ ip nhrp network-id 2
+ ip nhrp authentication dmvpn123
+ ip nhrp map multicast dynamic
+ ip nhrp redirect
+ no ip split-horizon eigrp 100
+ no ip next-hop-self eigrp 100
+
+# AP 2.1 - EIGRP Overlay (Loopback-Exchange via DMVPN)
+router eigrp 100
+ network 10.10.100.0 0.0.0.255
+ network 10.10.101.0 0.0.0.255
+ network 10.10.110.4 0.0.0.0
+ no auto-summary
+
 # AP 2.2 - BGP RR-Client
 ip prefix-list PL_172_16_4 seq 5 permit 172.16.4.0/24
 
@@ -83,22 +139,32 @@ route-map RM_MED_STM permit 10
 route-map RM_MED_STM permit 20
 
 router bgp 3
- bgp router-id 10.10.255.14
+ bgp router-id 10.10.110.4
  bgp log-neighbor-changes
- neighbor 10.10.255.11 remote-as 3
- neighbor 10.10.255.11 update-source lo0
- neighbor 10.10.255.13 remote-as 3
- neighbor 10.10.255.13 update-source lo0
+ neighbor 10.10.110.1 remote-as 3
+ neighbor 10.10.110.1 update-source lo100
+ neighbor 10.10.110.3 remote-as 3
+ neighbor 10.10.110.3 update-source lo100
+
+ # MELK
+ neighbor 172.16.2.2 remote-as 2
+ neighbor 172.16.2.2 update-source f0/0.501
+ neighbor 172.16.2.2 password cisco
+ neighbor 172.16.2.2 next-hop-self
+
+ # STM-POP-1
  neighbor 172.16.3.2 remote-as 4
  neighbor 172.16.3.2 password cisco
  neighbor 172.16.3.2 next-hop-self
- neighbor 10.9.0.2 remote-as 2
- neighbor 10.9.0.2 password cisco
- neighbor 10.9.0.2 next-hop-self
- !
+ neighbor 172.16.3.2 update-source f0/0.503
+
  address-family ipv4
-  neighbor 10.10.255.11 activate
-  neighbor 10.10.255.13 activate
+  network 172.16.3.0 mask 255.255.255.0
+  network 172.16.2.0 mask 255.255.255.0
+  neighbor 10.10.110.1 activate
+  neighbor 10.10.110.3 activate
   neighbor 172.16.3.2 activate
   neighbor 172.16.3.2 route-map RM_MED_STM out
   neighbor 10.9.0.2 activate
+ exit-address-family
+

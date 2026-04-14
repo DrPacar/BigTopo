@@ -89,7 +89,6 @@ router bgp 61
  !
  neighbor 172.16.11.1 remote-as 2
  neighbor 172.16.11.1 update-source gig0/0
- neighbor 172.16.11.1 password cisco
  neighbor 172.16.11.1 description EXT_PEER_11
  !
  address-family ipv4
