@@ -58,30 +58,31 @@ logging host 10.10.254.10
 logging trap informational
 logging source-interface Loopback0
 
-# AP 2.1 - OSPFv3 Underlay (authenticated)
-ipv6 unicast-routing
+# AP 2.1 - OSPFv2 Underlay (authenticated)
 
 key chain WIE_OSPF_KC
  key 1
   key-string diagnet123
   cryptographic-algorithm hmac-sha-256
 
-router ospfv3 1
+router ospf 1
  router-id 10.10.255.13
- address-family ipv4 unicast
-  area 0 authentication key-chain WIE_OSPF_KC
+ area 0 authentication message-digest
 
 int lo0
- ospfv3 1 ipv4 area 0
- ospfv3 1 ipv4 network point-to-point
+ ip ospf 1 area 0
+ ip ospf network point-to-point
+ ip ospf message-digest-key 1 md5 diagnet123
 
 int lo1
- ospfv3 1 ipv4 area 0
- ospfv3 1 ipv4 network point-to-point
+ ip ospf 1 area 0
+ ip ospf network point-to-point
+ ip ospf message-digest-key 1 md5 diagnet123
 
 int gig0/1
- ospfv3 1 ipv4 area 0
- ospfv3 1 ipv4 network point-to-point
+ ip ospf 1 area 0
+ ip ospf network point-to-point
+ ip ospf message-digest-key 1 md5 diagnet123
 
 # AP 2.1 - IPsec fuer DMVPN
 crypto isakmp policy 10
